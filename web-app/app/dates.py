@@ -21,11 +21,18 @@ JST = timezone(timedelta(hours=9))
 
 # Weekday 1-7 -> Japanese single-character label (月..日).
 _WEEKDAY_JA = {1: "月", 2: "火", 3: "水", 4: "木", 5: "金", 6: "土", 7: "日"}
+# Weekday 1-7 -> English short label (Mon..Sun).
+_WEEKDAY_EN = {1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat", 7: "Sun"}
+
+
+def jst_now() -> datetime:
+    """The current date-time in Japan Standard Time."""
+    return datetime.now(JST)
 
 
 def jst_today() -> date:
     """The current calendar date in Japan Standard Time."""
-    return datetime.now(JST).date()
+    return jst_now().date()
 
 
 def week_monday(today: date) -> date:
@@ -46,3 +53,8 @@ def weekday_to_date(weekday: int, today: date) -> date:
 def weekday_label_ja(weekday: int) -> str:
     """Japanese single-character weekday label, e.g. 1 -> '月'. '' if out of range."""
     return _WEEKDAY_JA.get(weekday, "")
+
+
+def weekday_label_en(weekday: int) -> str:
+    """English short weekday label, e.g. 1 -> 'Mon'. '' if out of range."""
+    return _WEEKDAY_EN.get(weekday, "")

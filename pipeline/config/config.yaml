@@ -142,3 +142,28 @@ synthetics:
       - "06:00-11:59"
       - "12:00-17:59"
       - "18:00-23:59"
+
+  traveler_signals:
+    # Per traveler, this many distinct (category, subcategory) items each get a
+    # propensity score. Uniform count in [items_min, items_max].
+    items_min: 5
+    items_max: 10
+
+    # Each selected item is a dislike (a negative score) with this probability;
+    # otherwise it is a positive score. Dislikes are excluded from the 0.3 mean.
+    negative_fraction: 0.2
+
+    # Positive propensity = 0.99 * Beta(pos_beta_a, pos_beta_b). a,b are tuned so
+    # the mean of the non-negative scores lands at ~0.3 (0.99 * 0.303). Beta (not
+    # uniform) so most likes are mild with a thin tail toward the 0.99 ceiling.
+    pos_beta_a: 1.6
+    pos_beta_b: 3.68
+
+    # Dislike magnitude = Beta(neg_beta_a, neg_beta_b) in (0, 1), written negated
+    # into [-1, 0). Skewed toward mild dislikes.
+    neg_beta_a: 2.0
+    neg_beta_b: 3.0
+
+    # score_type on each propensity row: fraction drawn as historical (1); the
+    # rest are inference (2). Assigned independently per row.
+    historical_fraction: 0.5

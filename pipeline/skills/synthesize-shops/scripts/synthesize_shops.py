@@ -18,8 +18,8 @@ Inputs
 
 Output (overwritten each run)
   * ``DATA/s03_primary/shop.tsv`` with columns:
-    shop_id, shop_name, shop_name_en, category, subcategory, address,
-    latitude, longitude
+    shop_id, shop_name, shop_name_en, category, category_en, subcategory,
+    subcategory_en, description_en, address, address_en, latitude, longitude
 
 Dependencies: pyshp, PyYAML -- see ``requirements.txt``.
 """
@@ -39,6 +39,10 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from shop_names import SHOP_WORD, make_name  # noqa: E402
+from shop_i18n import (  # noqa: E402
+    CATEGORY_EN, CHO_EN, SUBCATEGORY_EN, make_description, romanise_address,
+    split_chome,
+)
 
 NORMAL_HCODE = 8101      # 通常の町丁・字。8154 は水面調査区 (Tokyo Bay etc.) -> excluded
 MAX_POINT_TRIES = 400    # rejection-sampling attempts before falling back
@@ -155,18 +159,33 @@ def main() -> int:
 
     wards, cats = parse_shops_md((root / "docs" / "profiles" / "shops.md")
                                  .read_text(encoding="utf-8"))
-    # Every (category, subcategory) must have a name vocabulary entry.
-    missing = [(c, s) for c, subs in cats.items() for s in subs
-               if (c, s) not in SHOP_WORD]
-    if missing:
-        raise SystemExit(f"shop_names.SHOP_WORD is missing {len(missing)} entries: "
-                         f"{missing[:5]}")
+    # Every (category, subcategory) must have a name vocabulary entry and an
+    # English label; every category must have an English label.
+    pairs = [(c, s) for c, subs in cats.items() for s in subs]
+    for label, table in (("shop_names.SHOP_WORD", SHOP_WORD),
+                         ("shop_i18n.SUBCATEGORY_EN", SUBCATEGORY_EN)):
+        missing = [p for p in pairs if p not in table]
+        if missing:
+            raise SystemExit(f"{label} is missing {len(missing)} entries: "
+                             f"{missing[:5]}")
+    if missing_cat := [c for c in cats if c not in CATEGORY_EN]:
+        raise SystemExit(f"shop_i18n.CATEGORY_EN is missing: {missing_cat}")
 
     zips = sorted((root / "DATA" / "s01_raw").glob("geoshape_*13.zip"))
     if not zips:
         raise SystemExit("No Tokyo geoshape ZIP in DATA/s01_raw — run "
                          "retrieve-tokyo-geoshapes first.")
     areas = load_areas(zips[0], set(wards))
+
+    # Every 町丁 (chome stripped) must have a romaji entry for address_en.
+    missing_cho = sorted({split_chome(s)[0] for polys in areas.values()
+                          for s, _, _ in polys} - set(CHO_EN))
+    if missing_cho:
+        raise SystemExit(f"shop_i18n.CHO_EN is missing {len(missing_cho)} 町丁: "
+                         f"{missing_cho[:5]}")
+
+    # A separate stream for descriptions, so name/geo columns are unaffected.
+    desc_rng = random.Random(syn["random_seed"] ^ 0x5CE5D)
 
     cat_w = opts["category_weights"]
     ward_mult = opts.get("ward_category_multipliers") or {}
@@ -185,18 +204,23 @@ def main() -> int:
             s_name, bbox, rings = rng.choice(areas[ward])
             lon, lat = random_point(rng, bbox, rings)
             ja, en = make_name(rng, cat, sub, ward)
-            addr = (f"東京都{ward}{s_name}"
-                    f"{rng.randint(1, int(opts['banchi_max']))}番"
-                    f"{rng.randint(1, int(opts['go_max']))}号")
-            rows.append([ja, en, cat, sub, addr, lat, lon])
+            banchi = rng.randint(1, int(opts["banchi_max"]))
+            go = rng.randint(1, int(opts["go_max"]))
+            addr = f"東京都{ward}{s_name}{banchi}番{go}号"
+            addr_en = romanise_address(ward, s_name, banchi, go)
+            desc = make_description(desc_rng, cat, sub)
+            rows.append([ja, en, cat, CATEGORY_EN[cat], sub, SUBCATEGORY_EN[(cat, sub)],
+                         desc, addr, addr_en, lat, lon])
 
     rng.shuffle(rows)
     out = root / "DATA" / "s03_primary" / "shop.tsv"
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", encoding="utf-8", newline="") as fh:
         wr = csv.writer(fh, delimiter="\t", lineterminator="\n")
-        wr.writerow(["shop_id", "shop_name", "shop_name_en", "category",
-                     "subcategory", "address", "latitude", "longitude"])
+        wr.writerow(["shop_id", "shop_name", "shop_name_en",
+                     "category", "category_en", "subcategory", "subcategory_en",
+                     "description_en", "address", "address_en",
+                     "latitude", "longitude"])
         for i, r in enumerate(rows, 1):
             wr.writerow([i, *r])
 

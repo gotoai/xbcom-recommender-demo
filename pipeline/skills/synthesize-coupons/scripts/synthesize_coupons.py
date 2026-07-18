@@ -29,10 +29,12 @@ Inputs
 
 Output (overwritten each run)
   * ``DATA/s03_primary/coupon.tsv`` with columns:
-    coupon_id, shop_id, shop_name, category, subcategory, product_id,
-    product_name, price, coupon_start_weekday, coupon_duration_days,
-    coupon_discount_display, coupon_discount_amount, coupon_discount_rate,
-    coupon_code
+    coupon_id, shop_id, shop_name, shop_name_en, category, category_en,
+    subcategory, subcategory_en, product_id, product_name, product_name_en,
+    price, coupon_start_weekday, coupon_duration_days, coupon_discount_display,
+    coupon_discount_amount, coupon_discount_rate, coupon_code
+
+The ``*_en`` columns are denormalised straight from product.tsv.
 
 All prices and discount amounts are tax-exclusive (税抜) JPY, inherited from
 product.tsv.
@@ -60,6 +62,9 @@ DISCOUNT_OPTIONS = [
     ("amount", "amount", 80),
 ]
 CODE_ALPHABET = string.ascii_uppercase + string.digits
+
+# English columns carried over verbatim from product.tsv.
+PRODUCT_EN_COLS = ("shop_name_en", "category_en", "subcategory_en", "product_name_en")
 
 
 def effective(kind: str, value: float, price: int) -> tuple[float, float]:
@@ -134,6 +139,8 @@ def main() -> int:
         products = list(csv.DictReader(fh, delimiter="\t"))
     if not products:
         raise SystemExit("product.tsv is empty.")
+    if absent := [c for c in PRODUCT_EN_COLS if c not in products[0]]:
+        raise SystemExit(f"product.tsv lacks columns {absent} — re-run synthesize-products.")
 
     used_codes: set[str] = set()
     out = root / "DATA" / "s03_primary" / "coupon.tsv"
@@ -141,8 +148,9 @@ def main() -> int:
     fallbacks = 0
     with out.open("w", encoding="utf-8", newline="") as fh:
         wr = csv.writer(fh, delimiter="\t", lineterminator="\n")
-        wr.writerow(["coupon_id", "shop_id", "shop_name", "category", "subcategory",
-                     "product_id", "product_name", "price",
+        wr.writerow(["coupon_id", "shop_id", "shop_name", "shop_name_en",
+                     "category", "category_en", "subcategory", "subcategory_en",
+                     "product_id", "product_name", "product_name_en", "price",
                      "coupon_start_weekday", "coupon_duration_days",
                      "coupon_discount_display", "coupon_discount_amount",
                      "coupon_discount_rate", "coupon_code"])
@@ -153,8 +161,9 @@ def main() -> int:
             if not (min_rate <= rate <= max_rate and amount >= min_amount):
                 fallbacks += 1
             wr.writerow([
-                cid, p["shop_id"], p["shop_name"], p["category"], p["subcategory"],
-                p["product_id"], p["product_name"], price,
+                cid, p["shop_id"], p["shop_name"], p["shop_name_en"],
+                p["category"], p["category_en"], p["subcategory"], p["subcategory_en"],
+                p["product_id"], p["product_name"], p["product_name_en"], price,
                 rng.randint(1, 7),                 # coupon_start_weekday (Mon-Sun)
                 rng.randint(1, max_dur),           # coupon_duration_days
                 display, round(amount, 1), round(rate, 4),

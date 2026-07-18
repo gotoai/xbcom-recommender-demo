@@ -17,7 +17,7 @@ Inputs
 
 Output (overwritten each run)
   * ``DATA/s03_primary/inbound_traveler.tsv`` with columns:
-    traveler_id, nationality, gender, birthyear, repeating_times
+    traveler_id, nationality, nationality_en, gender, birthyear, repeating_times
 
 Dependencies: PyYAML (config) -- see ``requirements.txt``.
 """
@@ -31,6 +31,26 @@ import sys
 from pathlib import Path
 
 import yaml
+
+# --- 国籍・地域 -> English -----------------------------------------------------
+# Covers every 対象国・地域 in docs/profiles/users.md (the supported superset), so
+# any nationality parsed from travelers.md resolves. Purely a lookup, so it
+# consumes no RNG and leaves the other columns unchanged for a given seed.
+NATIONALITY_EN = {
+    "韓国": "South Korea", "中国": "China", "台湾": "Taiwan", "香港": "Hong Kong",
+    "タイ": "Thailand", "シンガポール": "Singapore", "マレーシア": "Malaysia",
+    "インドネシア": "Indonesia", "フィリピン": "Philippines", "ベトナム": "Vietnam",
+    "インド": "India", "豪州": "Australia", "ニュージーランド": "New Zealand",
+    "米国": "United States", "カナダ": "Canada", "メキシコ": "Mexico",
+    "ブラジル": "Brazil", "英国": "United Kingdom", "フランス": "France",
+    "ドイツ": "Germany", "イタリア": "Italy", "スペイン": "Spain",
+    "オランダ": "Netherlands", "ベルギー": "Belgium", "スイス": "Switzerland",
+    "スウェーデン": "Sweden", "デンマーク": "Denmark", "ノルウェー": "Norway",
+    "フィンランド": "Finland", "イスラエル": "Israel", "トルコ": "Turkey",
+    "サウジアラビア": "Saudi Arabia", "アラブ首長国連邦": "United Arab Emirates",
+    "バーレーン": "Bahrain", "オマーン": "Oman", "カタール": "Qatar",
+    "クウェート": "Kuwait",
+}
 
 # --- これまでの訪日回数 (%) -----------------------------------------------------
 # 東京都「令和6年 国・地域別外国人旅行者行動特性調査」図表4. Buckets are
@@ -192,6 +212,8 @@ def main() -> int:
             print(f"  [WARN] {nat}: in travelers.md but not in users.md 対象国・地域")
         if nat not in visits:
             raise SystemExit(f"No 訪日回数 series or proxy for {nat}")
+        if nat not in NATIONALITY_EN:
+            raise SystemExit(f"No nationality_en translation for {nat}")
 
     band_w = [b[2] for b in bands]
     rows = []
@@ -216,10 +238,11 @@ def main() -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", encoding="utf-8", newline="") as fh:
         w = csv.writer(fh, delimiter="\t", lineterminator="\n")
-        w.writerow(["traveler_id", "nationality", "gender", "birthyear", "repeating_times"])
+        w.writerow(["traveler_id", "nationality", "nationality_en", "gender",
+                    "birthyear", "repeating_times"])
         for i, (r, g) in enumerate(zip(rows, genders), 1):
             nat, birthyear, repeating = r
-            w.writerow([i, nat, g, birthyear, repeating])
+            w.writerow([i, nat, NATIONALITY_EN[nat], g, birthyear, repeating])
 
     first = sum(1 for r in rows if r[2] == 0)
     gcount = {code: genders.count(code) for code in ("F", "M", "-")}

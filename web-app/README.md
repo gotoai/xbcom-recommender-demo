@@ -32,8 +32,33 @@ The landing page lists the **active users** (the inbound travelers who appear in
   default to the unset `-`.
 - Selected filters are applied, the result is **shuffled with a fixed seed**
   (stable across pages/reloads), and shown **20 per page** with prev/next paging.
-- Tapping a user opens a stub detail overlay: profile + this week's visit schedule
-  with the aligned dates (recommendations land in a later phase).
+- Tapping a user opens their **user-mode reco screen** (below).
+
+## User-mode reco screen
+Tapping a traveler opens a full-screen overlay that mimics what *that* user sees in
+their own mobile app right now. Unlike the (Japanese) entry list, this **user view
+is entirely in English** — chrome, coupon data (nationality, ward, shop / product
+names, category via the `_en` fields), and the map labels. Three stacked panels:
+
+1. **Map** (Leaflet) centred on the traveler's **current location** — the
+   `visit.tsv` row for today's weekday and the current JST timespan (`06:00-11:59` /
+   `12:00-17:59` / `18:00-23:59`; the 00–06 gap falls back to the evening bucket). A
+   5 km search ring is drawn, and the active coupons in range are dropped as pins
+   (nearest ~200, to stay readable). Tiles are **Esri World Street Map**, which
+   renders Latin/English place labels for Japan (the raw OSM basemap shows local
+   Japanese names).
+2. **Coupon list** — every active coupon within 5 km (joined `coupon.tsv` →
+   `shop.tsv` for coordinates, filtered to those whose date span includes today),
+   nearest first, paginated **5 per page**. Thumbnails come from `assets/images`.
+3. **Concierge chat** — a placeholder (backend to come).
+
+> Because shops populate only the 6 central wards (港/渋谷/新宿/台東/千代田/中央)
+> while travelers move across all 23, a traveler currently in an outer ward may see
+> **no** coupons within 5 km — an expected outcome, shown as an empty state. The
+> same user's result changes through the day as their location moves.
+
+Leaflet (CDN) and the Esri tiles both need **internet at runtime**; the rest of the
+app works offline.
 
 ## Run
 ```bash

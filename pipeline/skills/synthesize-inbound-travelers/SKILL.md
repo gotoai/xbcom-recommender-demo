@@ -28,6 +28,7 @@ modelled — the week is the unit of time.
 | --- | --- |
 | `traveler_id` | 1-based unique integer |
 | `nationality` | 国・地域名 in Japanese (e.g. `台湾`), matching docs/profiles/users.md |
+| `nationality_en` | English name of `nationality` (e.g. `Taiwan`) |
 | `gender` | `F` = female, `M` = male, `-` = unknown / not disclosed |
 | `birthyear` | `YYYY`; `reference_year - age`, age drawn from the 年齢層分布 |
 | `repeating_times` | prior visits to Japan; **0 = first visit**, 1 = second, … |
@@ -66,6 +67,12 @@ Options: `--repo-root <path>` and `--config <path>` (both auto-detected).
 That table is already an apportionment of 2,000 (α = 0.4 smoothed), so re-drawing
 it would only add noise and break agreement with the doc. Headcounts in the TSV
 match the doc row for row.
+
+**`nationality_en`** — a static English name looked up from the `NATIONALITY_EN`
+table in the script, which covers every 対象国・地域 in docs/profiles/users.md (the
+supported superset, so a market added to travelers.md later still resolves). It is
+a pure lookup — no RNG — so adding it leaves the other columns unchanged for a
+given seed. The run fails fast if a nationality has no translation.
 
 **`birthyear`** — an age band is drawn with the 年齢層分布 weights
 (16-22: 15%, 23-30: 20%, 31-40: 25%, 41-50: 25%, 51-60: 10%, 61-70: 5%), then an

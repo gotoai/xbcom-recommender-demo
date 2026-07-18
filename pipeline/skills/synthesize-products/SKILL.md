@@ -31,12 +31,19 @@ rows, one per shop), **overwritten** on each run:
 | --- | --- |
 | `shop_id` | joins to `shop.tsv` |
 | `shop_name` | denormalised from `shop.tsv` (Japanese) |
+| `shop_name_en` | denormalised from `shop.tsv` (English) |
 | `category` | denormalised from `shop.tsv` |
+| `category_en` | denormalised from `shop.tsv` |
 | `subcategory` | denormalised from `shop.tsv` |
+| `subcategory_en` | denormalised from `shop.tsv` |
 | `product_id` | 1-based unique integer |
 | `product_name` | Japanese, e.g. `野菜たっぷり豚骨ラーメン` |
 | `product_name_en` | English, e.g. `Veggie-Loaded Tonkotsu Ramen` |
+| `description_en` | short English blurb for inbound travelers (feature + perk) |
 | `price` | non-discounted, **tax-exclusive (税抜)** price in JPY (int) |
+
+The `*_en` columns are denormalised from `shop.tsv`, so re-run `synthesize-shops`
+first if that table predates its English columns (the run fails fast otherwise).
 
 Row order follows `shop.tsv`, which is itself shuffled.
 
@@ -87,6 +94,26 @@ since plenty of ramen shops do sell a plain 醤油ラーメン.
 
 The script fails fast if `shop.tsv` contains a (category, subcategory) with no
 `PRODUCTS` entry.
+
+## English columns (`*_en`, `description_en`)
+
+- `shop_name_en`, `category_en`, `subcategory_en` are **copied verbatim** from the
+  matching `shop.tsv` row — no new vocabulary here, they just travel with the
+  product so downstream consumers need not re-join to `shop.tsv` for the English
+  labels. The run aborts if `shop.tsv` lacks these columns.
+- `description_en` — a short traveler-facing blurb built by
+  [scripts/product_i18n.py](scripts/product_i18n.py): one `DESC_TEMPLATE`
+  sentence per (category, subcategory) with a `{name}` slot filled by the
+  product's own `product_name_en`, plus one perk from the category's `_PERKS`
+  group (tax-free / English menu / "show your XB coupon" …). Because the product
+  name carries the specific item **and** modifier, two products in one
+  sub-category read differently — e.g. *"Our Veggie-Loaded Shoyu Ramen is a rich,
+  steaming bowl of authentic Japanese ramen. English menu available."* ~4,400
+  distinct blurbs across the 6,000 products.
+
+Descriptions draw from a **separate** RNG seeded off `random_seed`, so adding
+them leaves `product_name` / `product_name_en` / `price` byte-for-byte unchanged.
+The run fails fast if a (category, subcategory) has no `DESC_TEMPLATE` entry.
 
 ## Prices
 

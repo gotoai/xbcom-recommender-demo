@@ -172,11 +172,79 @@ body {
 .tx-label { font-size: 14px; font-weight: 600; }
 .tx-date { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: 2px; }
 
-/* Recommendations placeholder */
-.reco-placeholder {
-  text-align: center; color: var(--muted);
-  background: var(--card); border: 1px dashed var(--line); border-radius: 14px;
-  padding: 28px 20px;
+/* ============ User-mode reco screen (3 stacked panels) ============ */
+.reco { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.reco .detail-bar { flex: 0 0 auto; }
+.reco .detail-bar-title { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Panel 1: map */
+.reco-map-panel { flex: 0 0 40%; display: flex; flex-direction: column; min-height: 0; position: relative; }
+.reco-map { flex: 1 1 auto; min-height: 0; background: var(--line); z-index: 0; }
+.reco-map-caption {
+  flex: 0 0 auto; font-size: 11px; color: var(--muted);
+  background: var(--card); border-top: 1px solid var(--line);
+  padding: 6px 12px; display: flex; align-items: center; gap: 5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.reco-placeholder .ph-icon { font-size: 34px; opacity: .6; margin-bottom: 8px; }
-.reco-placeholder p { margin: 0; font-size: 13px; }
+.reco-map-caption .loc-dot { font-size: 9px; }
+.reco-map-caption .sep { opacity: .5; }
+.leaflet-container { font: inherit; }
+
+/* Panel 2: coupon list (scrolls) */
+.reco-list-panel { flex: 1 1 0; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; background: var(--bg); }
+.reco-list-head {
+  position: sticky; top: 0; z-index: 1;
+  display: flex; align-items: baseline; gap: 8px;
+  background: var(--bg); border-bottom: 1px solid var(--line);
+  padding: 9px 12px;
+}
+.reco-list-title { font-size: 13px; font-weight: 800; }
+.reco-list-sub { font-size: 12px; color: var(--muted); }
+.reco-list-sub .cap-note { opacity: .8; }
+.reco-list { padding: 10px 12px 16px; transition: opacity .15s ease; }
+
+/* Coupon cards */
+.coupon-list { gap: 8px; }
+.coupon-card { align-items: flex-start; gap: 10px; padding: 10px; }
+.cpn-thumb {
+  width: 52px; height: 52px; border-radius: 10px; flex: none; overflow: hidden;
+  background: var(--line); display: grid; place-items: center;
+}
+.cpn-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cpn-emoji { font-size: 26px; }
+.coupon-card .card-title { font-size: 14px; }
+.coupon-card .card-meta { font-size: 12px; }
+.discount-chip { background: rgba(232,89,12,.14); color: var(--accent); }
+.dist-chip { background: var(--line); color: var(--muted); }
+.price-line { display: flex; gap: 8px; align-items: baseline; margin-top: 3px; }
+.price-line .price { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.price-line .period { color: var(--muted); }
+
+/* Panel 3: chat placeholder */
+.reco-chat-panel {
+  flex: 0 0 auto; border-top: 1px solid var(--line); background: var(--card);
+  display: flex; flex-direction: column;
+}
+.reco-chat-head {
+  font-size: 12px; font-weight: 700; color: var(--muted);
+  padding: 8px 12px 6px; display: flex; align-items: center; gap: 8px;
+}
+.reco-chat-head .soon {
+  font-size: 10px; font-weight: 700; color: var(--brand);
+  background: rgba(10,108,255,.12); border-radius: 999px; padding: 1px 7px;
+}
+.reco-chat-body { padding: 0 12px 8px; }
+.reco-chat-body .msg { max-width: 90%; padding: 8px 12px; border-radius: 12px; font-size: 12px; }
+.reco-chat-body .msg.muted { color: var(--muted); font-style: italic; background: var(--bg); border: 1px solid var(--line); }
+.reco-chat-input {
+  display: flex; gap: 8px; padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+}
+.reco-chat-input input {
+  flex: 1; border: 1px solid var(--line); border-radius: 999px; padding: 9px 14px;
+  font-size: 14px; background: var(--bg); color: var(--muted);
+}
+.reco-chat-input button {
+  border: 0; background: var(--line); color: var(--muted); border-radius: 999px;
+  padding: 9px 16px; font-weight: 700;
+}

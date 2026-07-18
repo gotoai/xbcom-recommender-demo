@@ -63,6 +63,55 @@ GENDER_FACE = {"F": "👩", "M": "👨", "-": "🧑"}
 GENDER_LABEL = {"F": "女性", "M": "男性", "-": "不明"}
 GENDER_EN = {"F": "Female", "M": "Male", "-": "Unknown"}
 
+# English labels for the user-mode (English) reco view. Fall back to the original
+# Japanese value if a key is ever missing, so nothing breaks.
+NATIONALITY_EN = {
+    "韓国": "South Korea", "台湾": "Taiwan", "米国": "USA", "中国": "China",
+    "香港": "Hong Kong", "豪州": "Australia", "タイ": "Thailand",
+    "フィリピン": "Philippines", "カナダ": "Canada", "ベトナム": "Vietnam",
+    "インドネシア": "Indonesia", "英国": "UK", "フランス": "France",
+    "マレーシア": "Malaysia", "ドイツ": "Germany", "シンガポール": "Singapore",
+    "インド": "India", "イタリア": "Italy", "メキシコ": "Mexico", "スペイン": "Spain",
+    "オランダ": "Netherlands", "ニュージーランド": "New Zealand", "トルコ": "Türkiye",
+    "スイス": "Switzerland", "スウェーデン": "Sweden", "ベルギー": "Belgium",
+    "イスラエル": "Israel", "デンマーク": "Denmark", "ノルウェー": "Norway",
+    "フィンランド": "Finland", "サウジアラビア": "Saudi Arabia",
+    "アラブ首長国連邦": "UAE", "クウェート": "Kuwait", "カタール": "Qatar",
+    "バーレーン": "Bahrain", "オマーン": "Oman",
+}
+# Tokyo special wards -> official English "X City".
+WARD_EN = {
+    "世田谷区": "Setagaya", "中央区": "Chuo", "中野区": "Nakano", "北区": "Kita",
+    "千代田区": "Chiyoda", "台東区": "Taito", "品川区": "Shinagawa", "墨田区": "Sumida",
+    "大田区": "Ota", "文京区": "Bunkyo", "新宿区": "Shinjuku", "杉並区": "Suginami",
+    "板橋区": "Itabashi", "江戸川区": "Edogawa", "江東区": "Koto", "渋谷区": "Shibuya",
+    "港区": "Minato", "目黒区": "Meguro", "練馬区": "Nerima", "荒川区": "Arakawa",
+    "葛飾区": "Katsushika", "豊島区": "Toshima", "足立区": "Adachi",
+}
+CATEGORY_EN = {
+    "カラオケボックス": "Karaoke", "コーヒーショップ": "Coffee Shop",
+    "コンビニエンスストア": "Convenience Store", "スイーツショップ": "Sweets Shop",
+    "スパ": "Spa", "スポーツジム・プール": "Gym & Pool", "ディスカウントストア": "Discount Store",
+    "ドラッグストア": "Drugstore", "バー": "Bar", "ファストフード": "Fast Food",
+    "マッサージ店": "Massage", "レストラン": "Restaurant", "レンタカー": "Car Rental",
+    "家電量販店": "Electronics", "映画館": "Cinema", "書店": "Bookstore",
+    "美容院": "Hair Salon", "荷物預かりサービス": "Luggage Storage",
+    "衣料品店": "Clothing", "音楽・映像・ゲーム店": "Music/Video/Games",
+}
+
+
+def nationality_en(nat: str) -> str:
+    return NATIONALITY_EN.get(nat, nat)
+
+
+def ward_en(ward: str) -> str:
+    en = WARD_EN.get(ward)
+    return f"{en} City" if en else ward
+
+
+def category_en(cat: str) -> str:
+    return CATEGORY_EN.get(cat, cat)
+
 
 def gender_face(gender: str) -> str:
     return GENDER_FACE.get(gender, "🧑")
@@ -89,10 +138,11 @@ def category_emoji(category: str) -> str:
 
 
 def discount_label(display: str, amount: float, rate: float) -> str:
-    """Human coupon-discount label: rate -> 'NN%OFF', amount -> 'NNN円OFF'."""
+    """Human coupon-discount label (English user view): rate -> 'NN% OFF',
+    amount -> '¥NNN OFF'."""
     if display == "rate":
-        return f"{round(rate * 100)}%OFF"
-    return f"{int(round(amount)):,}円OFF"
+        return f"{round(rate * 100)}% OFF"
+    return f"¥{int(round(amount)):,} OFF"
 
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -179,11 +229,19 @@ def _load_shops() -> dict[str, dict]:
     return shops
 
 
+def _load_product_names_en() -> dict[str, str]:
+    """product_id -> English product name (from product.tsv), for the English view."""
+    return {row["product_id"]: row["product_name_en"]
+            for row in _read_tsv(config.PRODUCT_TSV)}
+
+
 def _load_coupons(today: date, shops: dict[str, dict]) -> list[dict]:
     """coupon.tsv, each row enriched with aligned dates, an ``active`` flag, a
-    human discount label, and its shop's coordinates (joined by shop_id)."""
+    human discount label, its shop's coordinates (joined by shop_id), and English
+    labels (product name / category) for the user-mode view."""
     from datetime import timedelta
 
+    product_en = _load_product_names_en()
     out: list[dict] = []
     for row in _read_tsv(config.COUPON_TSV):
         start_wd = int(row["coupon_start_weekday"])
@@ -203,7 +261,9 @@ def _load_coupons(today: date, shops: dict[str, dict]) -> list[dict]:
             float(row["coupon_discount_amount"]),
             float(row["coupon_discount_rate"]),
         )
-        c["shop_name_en"] = shop.get("shop_name_en", "")
+        c["shop_name_en"] = shop.get("shop_name_en", "") or row["shop_name"]
+        c["product_name_en"] = product_en.get(row["product_id"], "") or row["product_name"]
+        c["category_en"] = category_en(row["category"])
         c["address"] = shop.get("address", "")
         c["latitude"] = shop.get("latitude")
         c["longitude"] = shop.get("longitude")
@@ -235,6 +295,7 @@ def _load(today: date) -> Data:
         users.append({
             "id": tid,
             "nationality": nat,
+            "nationality_en": nationality_en(nat),
             "flag": nationality_flag(nat),
             "gender": gender,
             "face": gender_face(gender),
@@ -302,3 +363,72 @@ def paginate(items: list, page: int, page_size: int) -> tuple[list, int, int]:
 
 def user_by_id(tid: int) -> dict | None:
     return get_data().users_by_id.get(tid)
+
+
+def current_location(d: Data, tid: int, now: datetime) -> dict | None:
+    """The traveler's location right now: the visit row for today's weekday and the
+    current JST timespan. Returns None if the user has no matching visit."""
+    visits = d.visits_by_user.get(tid)
+    if not visits:
+        return None
+    weekday = now.isoweekday()
+    span = current_timespan(now)
+    today_iso = d.today.isoformat()
+    match = next((v for v in visits if v["weekday"] == weekday and v["timespan"] == span), None)
+    if match is None:  # defensive: fall back to any visit on today's weekday
+        match = next((v for v in visits if v["weekday"] == weekday), None)
+    if match is None:
+        return None
+    return {
+        "latitude": match["latitude"],
+        "longitude": match["longitude"],
+        "ward": match["ward"],
+        "ward_en": ward_en(match["ward"]),
+        "timespan": match["timespan"],
+        "date": today_iso,
+        "weekday_label": match["weekday_label"],
+        "weekday_label_en": dates.weekday_label_en(weekday),
+    }
+
+
+def coupons_within(d: Data, lat: float, lon: float, radius_km: float) -> list[dict]:
+    """Active coupons whose shop is within ``radius_km`` of (lat, lon), nearest
+    first. Each returned item is a shallow copy carrying ``distance_km``."""
+    out: list[dict] = []
+    for c in d.active_coupons:
+        dist = haversine_km(lat, lon, c["latitude"], c["longitude"])
+        if dist <= radius_km:
+            item = dict(c)
+            item["distance_km"] = round(dist, 2)
+            out.append(item)
+    out.sort(key=lambda c: c["distance_km"])
+    return out
+
+
+def build_reco(d: Data, tid: int, now: datetime,
+               radius_km: float = RECO_RADIUS_KM) -> dict | None:
+    """What traveler ``tid`` sees right now: current location + the active coupons
+    within ``radius_km`` (nearest first). Returns None for an unknown user."""
+    user = d.users_by_id.get(tid)
+    if user is None:
+        return None
+    loc = current_location(d, tid, now)
+    coupons = coupons_within(d, loc["latitude"], loc["longitude"], radius_km) if loc else []
+    return {
+        "user": user,
+        "location": loc,
+        "coupons": coupons,
+        "radius_km": radius_km,
+    }
+
+
+def reco_map_markers(coupons: list[dict], cap: int = MAP_MARKER_CAP) -> list[dict]:
+    """The nearest ``cap`` coupons reduced to the fields the map pins need."""
+    return [{
+        "coupon_id": c["coupon_id"],
+        "lat": c["latitude"],
+        "lon": c["longitude"],
+        "shop_name": c["shop_name_en"],
+        "discount": c["discount_label"],
+        "distance_km": c["distance_km"],
+    } for c in coupons[:cap]]

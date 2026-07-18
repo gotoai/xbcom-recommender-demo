@@ -17,8 +17,12 @@ Inputs
 
 Output (overwritten each run)
   * ``DATA/s03_primary/product.tsv`` with columns:
-    shop_id, shop_name, category, subcategory, product_id, product_name,
-    product_name_en, price
+    shop_id, shop_name, shop_name_en, category, category_en, subcategory,
+    subcategory_en, product_id, product_name, product_name_en, description_en,
+    price
+
+``shop_name_en`` / ``category_en`` / ``subcategory_en`` are copied straight from
+shop.tsv; ``description_en`` is a short traveler-facing product blurb.
 
 Dependencies: PyYAML -- see ``requirements.txt``.
 """
@@ -35,6 +39,10 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from product_names import PRODUCTS, make_product, price_band, price_cap  # noqa: E402
+from product_i18n import DESC_TEMPLATE, make_description  # noqa: E402
+
+# Columns copied verbatim from shop.tsv onto every product of that shop.
+SHOP_EN_COLS = ("shop_name_en", "category_en", "subcategory_en")
 
 
 def round_price(p: float) -> int:
@@ -97,26 +105,39 @@ def main() -> int:
         shops = list(csv.DictReader(fh, delimiter="\t"))
     if not shops:
         raise SystemExit("shop.tsv is empty.")
+    if absent := [c for c in SHOP_EN_COLS if c not in shops[0]]:
+        raise SystemExit(f"shop.tsv lacks columns {absent} — re-run synthesize-shops.")
 
-    # Every (category, subcategory) in shop.tsv must have a product vocabulary.
-    missing = sorted({(s["category"], s["subcategory"]) for s in shops
-                      if (s["category"], s["subcategory"]) not in PRODUCTS})
-    if missing:
-        raise SystemExit(f"product_names.PRODUCTS is missing {len(missing)} entries: "
-                         f"{missing[:5]}")
+    # Every (category, subcategory) in shop.tsv must have a product vocabulary
+    # and a description template.
+    for label, table in (("product_names.PRODUCTS", PRODUCTS),
+                         ("product_i18n.DESC_TEMPLATE", DESC_TEMPLATE)):
+        missing = sorted({(s["category"], s["subcategory"]) for s in shops
+                          if (s["category"], s["subcategory"]) not in table})
+        if missing:
+            raise SystemExit(f"{label} is missing {len(missing)} entries: "
+                             f"{missing[:5]}")
+
+    # A separate stream for descriptions, so name/price columns are unaffected.
+    desc_rng = random.Random(syn["random_seed"] ^ 0x5CE5D)
 
     out = root / "DATA" / "s03_primary" / "product.tsv"
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", encoding="utf-8", newline="") as fh:
         wr = csv.writer(fh, delimiter="\t", lineterminator="\n")
-        wr.writerow(["shop_id", "shop_name", "category", "subcategory",
-                     "product_id", "product_name", "product_name_en", "price"])
+        wr.writerow(["shop_id", "shop_name", "shop_name_en",
+                     "category", "category_en", "subcategory", "subcategory_en",
+                     "product_id", "product_name", "product_name_en",
+                     "description_en", "price"])
         for pid, s in enumerate(shops, 1):
             cat, sub = s["category"], s["subcategory"]
             ja, en, mult = make_product(rng, cat, sub, mod_p)
             lo, hi = price_band(cat, sub)
-            wr.writerow([s["shop_id"], s["shop_name"], cat, sub, pid, ja, en,
-                         sample_price(rng, lo, hi, mult, price_cap(cat, sub))])
+            price = sample_price(rng, lo, hi, mult, price_cap(cat, sub))
+            desc = make_description(desc_rng, cat, sub, en)
+            wr.writerow([s["shop_id"], s["shop_name"], s["shop_name_en"],
+                         cat, s["category_en"], sub, s["subcategory_en"],
+                         pid, ja, en, desc, price])
 
     print(f"  [OK]   {len(shops):,} products (1 per shop) -> {out.relative_to(root)}")
     print(f"         seed={syn['random_seed']}  modifier_probability={mod_p}")

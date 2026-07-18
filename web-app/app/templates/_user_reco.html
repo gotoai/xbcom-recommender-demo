@@ -1,0 +1,51 @@
+<div class="reco" data-user-id="{{ u.id }}">
+  <div class="detail-bar">
+    <button type="button" class="back-btn" id="user-back">‹ Back</button>
+    <span class="detail-bar-title">{{ u.face }} Traveler #{{ u.id }} · {{ u.flag }} {{ u.nationality_en }}</span>
+  </div>
+
+  {# --- Panel 1: map centred on the traveler's current location --- #}
+  <section class="reco-map-panel">
+    <div id="reco-map" class="reco-map"></div>
+    {% if loc %}
+    <div class="reco-map-caption">
+      <span class="loc-dot">🔵</span> You are here: {{ loc.ward_en }}
+      <span class="sep">·</span> {{ loc.date }} ({{ loc.weekday_label_en }}) {{ loc.timespan }}
+    </div>
+    {% endif %}
+    {# map init data: center + coupon pins (nearest {{ marker_cap }}) #}
+    <script type="application/json" id="reco-data">
+    {
+      "center": {% if loc %}{"lat": {{ loc.latitude }}, "lon": {{ loc.longitude }}}{% else %}null{% endif %},
+      "radius_km": {{ radius_km }},
+      "markers": {{ markers | tojson }}
+    }
+    </script>
+  </section>
+
+  {# --- Panel 2: the searched coupons, paginated 5/page --- #}
+  <section class="reco-list-panel">
+    <div class="reco-list-head">
+      <span class="reco-list-title">Coupons</span>
+      <span class="reco-list-sub">
+        {{ total }} within 5&nbsp;km
+        {% if total > marker_cap %}<span class="cap-note">(map shows nearest {{ marker_cap }})</span>{% endif %}
+      </span>
+    </div>
+    <div id="reco-list" class="reco-list" data-user-id="{{ u.id }}">
+      {% include "_coupon_list.html" %}
+    </div>
+  </section>
+
+  {# --- Panel 3: concierge chat placeholder (backend later) --- #}
+  <section class="reco-chat-panel">
+    <div class="reco-chat-head">🤖 Concierge<span class="soon">Coming soon</span></div>
+    <div class="reco-chat-body">
+      <div class="msg assistant muted">Ask me anything about these coupons (coming soon).</div>
+    </div>
+    <form class="reco-chat-input" onsubmit="return false;">
+      <input type="text" placeholder="Type a message… (coming soon)" disabled>
+      <button type="submit" disabled>Send</button>
+    </form>
+  </section>
+</div>

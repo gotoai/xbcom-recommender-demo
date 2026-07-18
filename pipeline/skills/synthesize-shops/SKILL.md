@@ -27,8 +27,12 @@ rows = 1,000 x 6 wards), **overwritten** on each run:
 | `shop_name` | Japanese name, e.g. `朝日立ち飲み 新宿店` |
 | `shop_name_en` | English name, e.g. `Asahi Standing Bar Shinjuku` |
 | `category` | one of the 20 categories in docs/profiles/shops.md |
+| `category_en` | English label for `category`, e.g. `Bar` |
 | `subcategory` | one of that category's sub-categories |
+| `subcategory_en` | English label for `subcategory`, e.g. `Standing Bar` |
+| `description_en` | short English blurb for inbound travelers (feature + perk) |
 | `address` | `東京都<区><町丁字><番>番<号>号` |
+| `address_en` | romanized postal form, e.g. `1-15-16 Hatchobori, Chuo-ku, Tokyo` |
 | `latitude` | WGS84/JGD2000, 6 dp |
 | `longitude` | WGS84/JGD2000, 6 dp |
 
@@ -126,6 +130,34 @@ name rather than a transliteration and no romanisation library is needed.
 - `PATTERNS` — 5 paired templates; the same index drives both languages.
 
 The script fails fast if shops.md gains a sub-category with no `SHOP_WORD` entry.
+
+## English columns (`*_en`, `description_en`)
+
+[scripts/shop_i18n.py](scripts/shop_i18n.py) holds the parallel-English data for
+the four localized columns. Like `shop_names.py` it is **static data + pure
+functions**, so synthesis stays reproducible and needs no romanization library
+at runtime.
+
+- `CATEGORY_EN` / `SUBCATEGORY_EN` — English labels for the 20 categories and
+  117 sub-categories. `SUBCATEGORY_EN` is keyed by **(category, subcategory)**
+  (same reason as `SHOP_WORD`). The script fails fast if shops.md gains a
+  category or sub-category with no entry.
+- `address_en` — built by `romanise_address()` from `CHO_EN`, a 町丁 → romaji
+  table (285 entries, chome stripped). The block number mirrors the Japanese
+  address: `chome-banchi-go` (chome dropped where the 町丁 has none), e.g.
+  `東京都中央区八丁堀一丁目15番16号` → `1-15-16 Hatchobori, Chuo-ku, Tokyo`.
+  Readings were generated once with pykakasi and **hand-corrected** — many
+  central-Tokyo place names have irregular readings a converter gets wrong
+  (三ノ輪 = Minowa not "Sannowa", 千駄ケ谷 = Sendagaya, 白金 = Shirokane,
+  本町 = Honmachi, 神田神保町 = Kanda-Jimbocho). Hyphens follow map/Hepburn style
+  (`Nihombashi-Kayabacho`, `Azabu-Juban`). The script fails fast if a polygon's
+  町丁 has no `CHO_EN` entry.
+- `description_en` — `make_description()` composes one `_DESC` feature sentence
+  per sub-category with one traveler perk drawn from the category's `_PERKS`
+  group (tax-free / English menu / "show your XB coupon" …). It draws from a
+  **separate** `desc_rng` seeded off `random_seed`, so adding descriptions leaves
+  the name/geography columns byte-for-byte unchanged. ~465 distinct blurbs across
+  the 6,000 shops.
 
 ## Notes & maintenance
 

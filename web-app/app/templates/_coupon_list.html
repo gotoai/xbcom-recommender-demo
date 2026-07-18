@@ -1,0 +1,45 @@
+{# Coupon list panel body: the page's items + pager. Swapped in place on paging. #}
+{% if coupons %}
+<ul class="card-list coupon-list">
+  {% for c in coupons %}
+  <li class="card coupon-card" data-coupon-id="{{ c.coupon_id }}">
+    <span class="cpn-thumb">
+      <img src="/assets/images/{{ c.image | urlencode }}" alt=""
+           loading="lazy"
+           onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'cpn-emoji',textContent:'{{ c.emoji }}'}))">
+    </span>
+    <div class="card-body">
+      <div class="card-title">{{ c.product_name_en }}</div>
+      <div class="card-tags">
+        <span class="chip discount-chip">{{ c.discount_label }}</span>
+        <span class="chip dist-chip">📍 {{ "%.1f"|format(c.distance_km) }} km</span>
+      </div>
+      <div class="card-meta">{{ c.emoji }} {{ c.shop_name_en }} · {{ c.category_en }}</div>
+      <div class="card-meta price-line">
+        <span class="price">¥{{ "{:,}".format(c.price) }}</span>
+        <span class="period">Until {{ c.coupon_end_date[5:] }}</span>
+      </div>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+
+<nav class="pager reco-pager" aria-label="Pagination">
+  {% if page > 1 %}
+  <button type="button" class="pager-btn" data-page="{{ page - 1 }}">‹ Prev</button>
+  {% else %}
+  <span class="pager-btn is-disabled">‹ Prev</span>
+  {% endif %}
+  <span class="pager-info">{{ page }} / {{ total_pages }}</span>
+  {% if page < total_pages %}
+  <button type="button" class="pager-btn" data-page="{{ page + 1 }}">Next ›</button>
+  {% else %}
+  <span class="pager-btn is-disabled">Next ›</span>
+  {% endif %}
+</nav>
+{% else %}
+<div class="empty">
+  <div class="empty-icon">🎟️</div>
+  <p>No active coupons within 5&nbsp;km of your current location.</p>
+</div>
+{% endif %}

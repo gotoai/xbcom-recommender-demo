@@ -15,12 +15,19 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import config, data
+from . import config, data, dates
+
+COUPON_PAGE_SIZE = 5  # coupons per page in the reco list panel
 
 app = FastAPI(title="XB.com recommender web-app", version="0.1.0")
 
 templates = Jinja2Templates(directory=str(config.BASE_DIR / "app" / "templates"))
 app.mount("/static", StaticFiles(directory=str(config.BASE_DIR / "app" / "static")), name="static")
+# Shop category thumbnails live in the repo's assets/images (served read-only). If
+# the folder is absent the app still runs; the templates fall back to an emoji.
+_assets = config.REPO_ROOT / "assets"
+if _assets.is_dir():
+    app.mount("/assets", StaticFiles(directory=str(_assets)), name="assets")
 
 
 def _page_context(nationality: str | None, age: str | None, page: int) -> dict:
@@ -60,16 +67,49 @@ async def index(
     return templates.TemplateResponse(request, "index.html", ctx)
 
 
-@app.get("/ui/user/{traveler_id}", response_class=HTMLResponse)
-async def ui_user_detail(request: Request, traveler_id: int) -> HTMLResponse:
-    """Stub user-detail fragment: profile + this week's aligned visit schedule."""
-    u = data.user_by_id(traveler_id)
-    if u is None:
-        return HTMLResponse("<p class='error'>不明なユーザーです。</p>", status_code=404)
+def _reco_or_404(traveler_id: int) -> dict | None:
     d = data.get_data()
-    return templates.TemplateResponse(request, "_user_detail.html", {
-        "u": u,
-        "visits": d.visits_by_user.get(traveler_id, []),
+    return data.build_reco(d, traveler_id, dates.jst_now())
+
+
+@app.get("/ui/user/{traveler_id}", response_class=HTMLResponse)
+async def ui_user_reco(request: Request, traveler_id: int, page: int = 1) -> HTMLResponse:
+    """The traveler's coupon-recommendation screen (user mode): a map centred on
+    their current location, the active coupons within 5 km (paginated list), and a
+    concierge-chat placeholder."""
+    reco = _reco_or_404(traveler_id)
+    if reco is None:
+        return HTMLResponse("<p class='error'>不明なユーザーです。</p>", status_code=404)
+    coupons = reco["coupons"]
+    page_items, page, total_pages = data.paginate(coupons, page, COUPON_PAGE_SIZE)
+    return templates.TemplateResponse(request, "_user_reco.html", {
+        "u": reco["user"],
+        "loc": reco["location"],
+        "radius_km": reco["radius_km"],
+        "total": len(coupons),
+        "markers": data.reco_map_markers(coupons),
+        "marker_cap": data.MAP_MARKER_CAP,
+        "coupons": page_items,
+        "page": page,
+        "total_pages": total_pages,
+    })
+
+
+@app.get("/ui/user/{traveler_id}/coupons", response_class=HTMLResponse)
+async def ui_user_coupons(request: Request, traveler_id: int, page: int = 1) -> HTMLResponse:
+    """Just the coupon-list panel (list + pager) for a given page — swapped in place
+    by the reco screen's pager without reloading the map."""
+    reco = _reco_or_404(traveler_id)
+    if reco is None:
+        return HTMLResponse("<p class='error'>不明なユーザーです。</p>", status_code=404)
+    coupons = reco["coupons"]
+    page_items, page, total_pages = data.paginate(coupons, page, COUPON_PAGE_SIZE)
+    return templates.TemplateResponse(request, "_coupon_list.html", {
+        "u": reco["user"],
+        "total": len(coupons),
+        "coupons": page_items,
+        "page": page,
+        "total_pages": total_pages,
     })
 
 
@@ -91,6 +131,21 @@ async def api_users(
     })
 
 
+@app.get("/api/user/{traveler_id}/reco")
+async def api_user_reco(traveler_id: int) -> JSONResponse:
+    reco = _reco_or_404(traveler_id)
+    if reco is None:
+        return JSONResponse({"error": "unknown user"}, status_code=404)
+    return JSONResponse({
+        "user_id": traveler_id,
+        "location": reco["location"],
+        "radius_km": reco["radius_km"],
+        "coupon_count": len(reco["coupons"]),
+        "map_markers": len(data.reco_map_markers(reco["coupons"])),
+        "coupons": reco["coupons"][:COUPON_PAGE_SIZE],
+    })
+
+
 @app.get("/api/nationalities")
 async def api_nationalities() -> JSONResponse:
     d = data.get_data()
@@ -105,6 +160,7 @@ async def healthz() -> dict:
         "today": d.today.isoformat(),
         "active_users": len(d.users),
         "coupons": len(d.coupons),
+        "active_coupons": len(d.active_coupons),
     }
 
 

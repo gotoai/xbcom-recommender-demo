@@ -28,10 +28,14 @@ rows), **overwritten** on each run:
 | `coupon_id` | 1-based unique integer |
 | `shop_id` | joins to `shop.tsv` |
 | `shop_name` | denormalised (Japanese) |
+| `shop_name_en` | denormalised (English) |
 | `category` | denormalised |
+| `category_en` | denormalised (English) |
 | `subcategory` | denormalised |
+| `subcategory_en` | denormalised (English) |
 | `product_id` | joins to `product.tsv` |
 | `product_name` | denormalised (Japanese) |
+| `product_name_en` | denormalised (English) |
 | `price` | non-discounted, tax-exclusive JPY |
 | `coupon_start_weekday` | 1-7, Monday to Sunday |
 | `coupon_duration_days` | 1-7, inclusive |
@@ -39,6 +43,11 @@ rows), **overwritten** on each run:
 | `coupon_discount_amount` | yen off (float) |
 | `coupon_discount_rate` | 0-1 (float) |
 | `coupon_code` | unique 6-10 char `[A-Z0-9]` string |
+
+The four `*_en` columns are copied verbatim from `product.tsv` (which sources
+`shop_name_en` / `category_en` / `subcategory_en` from `shop.tsv`), so a consumer
+has the English labels without re-joining. The run fails fast if `product.tsv`
+lacks them — re-run `synthesize-products` (and `synthesize-shops` before it) if so.
 
 Row order follows `product.tsv`, which follows the shuffled `shop.tsv`.
 
