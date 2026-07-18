@@ -1,0 +1,144 @@
+
+synthetics:
+  random_seed: 629
+
+  inbound_travelers:
+    # The scenario has no absolute date (docs/scenarios/travelers.md fixes only a
+    # Mon-Sun week), so birthyear = reference_year - age. 2026 matches the base
+    # period of the nationality distribution (JNTO 2026年1月～4月).
+    reference_year: 2026
+
+    # 訪日回数「10回以上」 tail: repeating_times = 9 + Exp(mean), capped.
+    # The survey's top bucket is open-ended, so the tail shape is an assumption.
+    repeat_tail_mean: 4
+    repeat_max: 30
+
+    # gender is drawn independently per traveler from these weights:
+    # F = female, M = male, unknown -> '-' (not disclosed / not input). The survey
+    # carries no gender split, so an even three-way share is a demo assumption.
+    gender_weights:
+      F: 1
+      M: 1
+      unknown: 1
+
+  shops:
+    per_ward: 1000
+
+    # Address banchi/go are synthetic: 「<S_NAME><banchi>番<go>号」.
+    banchi_max: 30
+    go_max: 20
+
+    # Category mix (%). Hypothetical -- docs/profiles/shops.md defines the taxonomy
+    # but no distribution. Shaped for inbound-facing shops in central Tokyo.
+    # Must be read together with ward_category_multipliers below.
+    category_weights:
+      レストラン: 24
+      バー: 10
+      コンビニエンスストア: 8
+      コーヒーショップ: 7
+      衣料品店: 7
+      ファストフード: 5
+      スイーツショップ: 5
+      美容院: 5
+      ドラッグストア: 5
+      マッサージ店: 4
+      ディスカウントストア: 3
+      音楽・映像・ゲーム店: 3
+      カラオケボックス: 3
+      書店: 2
+      家電量販店: 2
+      スポーツジム・プール: 2
+      スパ: 2
+      荷物預かりサービス: 1.5
+      レンタカー: 1
+      映画館: 0.5
+
+    # Per-ward tilts applied on top of category_weights, then renormalised.
+    # Gives each ward a recognisable character instead of 5 identical shop mixes.
+    ward_category_multipliers:
+      千代田区:            # 秋葉原(電気街・アニメ)、神保町(古書店街)
+        家電量販店: 3.0
+        音楽・映像・ゲーム店: 3.0
+        書店: 2.0
+        レストラン: 0.9
+      中央区:              # 銀座(高級ファッション・免税)、日本橋、築地(飲食)
+        衣料品店: 1.8
+        ディスカウントストア: 1.3   # 銀座の免税専門店
+        スイーツショップ: 1.3      # 老舗の和菓子・洋菓子
+        レストラン: 1.2           # 築地・銀座
+        カラオケボックス: 0.5
+        スポーツジム・プール: 0.7
+      渋谷区:              # 渋谷・原宿(ファッション・美容)
+        衣料品店: 2.0
+        美容院: 1.5
+        カラオケボックス: 1.5
+        バー: 1.2
+      新宿区:              # 歌舞伎町(飲食・娯楽)
+        バー: 1.5
+        カラオケボックス: 1.5
+        ドラッグストア: 1.3
+      台東区:              # 浅草・上野(土産・菓子・アメ横)
+        ディスカウントストア: 1.5
+        スイーツショップ: 1.5
+        衣料品店: 0.8
+        家電量販店: 0.7
+      港区:                # 六本木・赤坂(高級飲食・スパ)
+        スパ: 1.5
+        スポーツジム・プール: 1.5
+        レンタカー: 1.5
+        レストラン: 1.1
+
+    # Sub-category tilts within a category. Anything unlisted defaults to 1.0
+    # (uniform), so only the notable skews need stating.
+    subcategory_weights:
+      レストラン:
+        ラーメン: 2.0
+        寿司・海鮮: 1.5
+        焼肉・ホルモン: 1.2
+        韓国料理: 0.8
+        インド料理: 0.6
+      バー:
+        居酒屋: 3.0
+        立ち飲み屋: 1.2
+        スポーツバー: 0.6
+      音楽・映像・ゲーム店:
+        アニメ・キャラクターグッズ: 1.5
+        トレーディングカード: 1.2
+        楽器: 0.7
+      衣料品店:
+        ファストファッション: 1.5
+        古着・ヴィンテージ: 1.3
+        和装・着物: 0.7
+
+  products:
+    # Probability a product name gets a modifier prefix (野菜たっぷり醤油ラーメン vs
+    # 醤油ラーメン). The modifier also scales the price, so name and price agree.
+    modifier_probability: 0.75
+
+  coupons:
+    # Usage period: start weekday 1-7 (Mon-Sun) and a duration, both uniform.
+    # The end weekday is deliberately NOT stored -- a Sat start with a 7-day run
+    # would leave the Mon-Sun week, and clamping/wrapping are both lossy. Let the
+    # consumer derive the end under whatever boundary rule it needs.
+    max_duration_days: 7
+
+    # Which of the 5 fixed discount options suit a given price. An option is
+    # eligible only if its effective rate lands in [min_rate, max_rate] AND the
+    # yen it takes off is at least min_discount_amount. This is what stops a
+    # 5%-off coupon on a 150-yen ice cream (worth 7 yen) or an 80-yen coupon on a
+    # 100-yen shop item (80% off).
+    min_effective_rate: 0.02
+    max_effective_rate: 0.30
+    min_discount_amount: 20
+
+    code_length_min: 6
+    code_length_max: 10
+
+  visits:
+    # Mon-Sun x 3 spans = 21 intervals per traveler. 00:00-05:59 is not modelled
+    # (travellers are assumed asleep), so 18h of each day is covered.
+    days: 7
+    timespans:
+      - "06:00-11:59"
+      - "12:00-17:59"
+      - "18:00-23:59"

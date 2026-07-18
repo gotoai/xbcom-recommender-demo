@@ -1,0 +1,11 @@
+# web-app dependencies — ISOLATED from the pipeline. CPU-only, no model.
+# Install into web-app/.venv:
+#   python3.12 -m venv web-app/.venv
+#   web-app/.venv/bin/pip install -r web-app/requirements.txt
+
+fastapi                  # web framework (pages + JSON API)
+uvicorn[standard]        # ASGI server
+jinja2                   # server-rendered HTML
+python-dotenv            # load web-app/.env
+httpx                    # test client (Starlette TestClient dependency)
+pytest                   # data-layer + endpoint smoke tests

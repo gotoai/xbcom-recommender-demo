@@ -1,0 +1,42 @@
+<div class="uscreen">
+  <div class="detail-bar">
+    <button type="button" class="back-btn" id="user-back">‹ 戻る</button>
+    <span class="detail-bar-title">Traveler #{{ u.id }}</span>
+  </div>
+
+  <div class="detail-content">
+    <!-- Profile -->
+    <div class="user-head">
+      <span class="avatar big face" title="{{ u.gender_label }}" aria-label="{{ u.gender_label }}">{{ u.face }}</span>
+      <div class="user-headings">
+        <div class="user-name">Traveler #{{ u.id }}</div>
+        <div class="user-meta">{{ u.flag }} {{ u.nationality }} · {{ u.gender_label }} · {{ u.age }}歳（{{ u.age_band }}代）· 訪問{{ u.repeating_times }}回目</div>
+      </div>
+    </div>
+
+    <!-- This week's visit schedule (weekday -> aligned calendar date) -->
+    <h4 class="section-head">今週の訪問（{{ visits|length }}件）</h4>
+    {% if visits %}
+    <ul class="tx-list">
+      {% for v in visits %}
+      <li class="tx-row">
+        <span class="tx-emoji">📍</span>
+        <div class="tx-main">
+          <span class="tx-label">{{ v.ward }}</span>
+          <span class="tx-date">{{ v.date }}（{{ v.weekday_label }}）· {{ v.timespan }}</span>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="detail-loading">訪問記録がありません。</p>
+    {% endif %}
+
+    <!-- Recommendations placeholder (later phase) -->
+    <h4 class="section-head">おすすめクーポン</h4>
+    <div class="reco-placeholder">
+      <div class="ph-icon">🎟️</div>
+      <p>このユーザー向けのおすすめは近日公開予定です。</p>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="{{ ui_language }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>XB.com リコメンダー</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧭</text></svg>">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <div class="phone">
+    <!-- App bar -->
+    <header class="appbar">
+      <div class="brand"><span class="brand-mark">🧭</span> XB.com リコメンダー</div>
+      <div class="appbar-sub">アクティブユーザー · 今週 {{ week_range }}（{{ today_label }} 基準）</div>
+    </header>
+
+    <!-- Filter bar -->
+    <form class="filterbar" id="filter-form" method="get" action="/">
+      <label class="filter-field">
+        <span class="filter-label">国籍</span>
+        <select name="nationality" class="filter-select" data-autosubmit>
+          <option value="" {% if not sel_nationality %}selected{% endif %}>-</option>
+          {% for n in d.nationalities %}
+          <option value="{{ n }}" {% if sel_nationality == n %}selected{% endif %}>{{ n }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="filter-field">
+        <span class="filter-label">年代</span>
+        <select name="age" class="filter-select" data-autosubmit>
+          <option value="" {% if not sel_age %}selected{% endif %}>-</option>
+          {% for b in d.age_bands %}
+          <option value="{{ b }}" {% if sel_age == b|string %}selected{% endif %}>{{ b }}代</option>
+          {% endfor %}
+        </select>
+      </label>
+      <noscript><button type="submit" class="filter-go">絞り込む</button></noscript>
+    </form>
+
+    <!-- Scrollable content -->
+    <main class="content">
+      <div class="result-head">
+        <span class="result-count">{{ total }}</span> 件
+        {% if sel_nationality or sel_age %}
+        <a class="clear-link" href="/">条件クリア</a>
+        {% endif %}
+      </div>
+
+      {% if users %}
+      <ul class="card-list">
+        {% for u in users %}
+        <li class="card user-card" data-user-id="{{ u.id }}" role="button" tabindex="0">
+          <span class="avatar face gender-{{ u.gender if u.gender != '-' else 'x' }}" title="{{ u.gender_label }}" aria-label="{{ u.gender_label }}">{{ u.face }}</span>
+          <div class="card-body">
+            <div class="card-title">
+              Traveler #{{ u.id }}
+              <span class="chip age-chip">{{ u.age }}歳</span>
+            </div>
+            <div class="card-meta"><span class="meta-flag" title="{{ u.nationality }}" aria-label="{{ u.nationality }}">{{ u.flag }}</span> {{ u.gender_en }} · {{ u.age_band }}代 · 訪問{{ u.repeating_times }}回目</div>
+          </div>
+          <span class="chevron">›</span>
+        </li>
+        {% endfor %}
+      </ul>
+
+      <!-- Pagination -->
+      <nav class="pager" aria-label="ページ送り">
+        {% set base = "/?nationality=" ~ (sel_nationality | urlencode) ~ "&age=" ~ (sel_age | urlencode) %}
+        {% if page > 1 %}
+        <a class="pager-btn" href="{{ base }}&page={{ page - 1 }}">‹ 前へ</a>
+        {% else %}
+        <span class="pager-btn is-disabled">‹ 前へ</span>
+        {% endif %}
+        <span class="pager-info">{{ page }} / {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a class="pager-btn" href="{{ base }}&page={{ page + 1 }}">次へ ›</a>
+        {% else %}
+        <span class="pager-btn is-disabled">次へ ›</span>
+        {% endif %}
+      </nav>
+      {% else %}
+      <div class="empty">
+        <div class="empty-icon">🔍</div>
+        <p>条件に一致するユーザーはいません。</p>
+      </div>
+      {% endif %}
+    </main>
+
+    <!-- User detail overlay (fetched into on user tap) -->
+    <div id="user-overlay" class="overlay" hidden>
+      <div id="user-content"></div>
+    </div>
+  </div>
+</body>
+</html>
