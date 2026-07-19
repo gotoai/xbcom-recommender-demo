@@ -1,46 +1,48 @@
 # 利用者
 
-## 対象国・地域
+## 対象国・地域、言語
 
 現在のアプリのサポート状況により、下記の国・地域の利用者がXB eSIMアプリ(iPhoneまたはAndroid)をダウンロードし、利用できる。
 
-- 韓国
-- 中国
-- 台湾
-- 香港
-- タイ
-- シンガポール
-- マレーシア
-- インドネシア
-- フィリピン
-- ベトナム
-- インド
-- 豪州
-- ニュージーランド
-- 米国
-- カナダ
-- メキシコ
-- ブラジル
-- 英国
-- フランス
-- ドイツ
-- イタリア
-- スペイン
-- オランダ
-- ベルギー
-- スイス
-- スウェーデン
-- デンマーク
-- ノルウェー
-- フィンランド
-- イスラエル
-- トルコ
-- サウジアラビア
-- アラブ首長国連邦
-- バーレーン
-- オマーン
-- カタール
-- クウェート
+| Nationality(JPN) | Nationality(EN) | Default language(EN) | Default language(Native) |
+| --- | --- | --- | --- |
+| 韓国 | South Korea | Korean | 한국어 |
+| 中国 | China | Simplified Chinese | 简体中文 |
+| 台湾 | Taiwan | Traditional Chinese | 繁體中文 |
+| 香港 | Hong Kong | Traditional Chinese | 繁體中文 |
+| タイ | Thailand | Thai | ภาษาไทย |
+| シンガポール | Singapore | English | English |
+| マレーシア | Malaysia | Malay | Bahasa Melayu |
+| インドネシア | Indonesia | Indonesian | Bahasa Indonesia |
+| フィリピン | Philippines | Filipino | Filipino |
+| ベトナム | Vietnam | Vietnamese | Tiếng Việt |
+| インド | India | Hindi | हिन्दी |
+| 豪州 | Australia | English | English |
+| ニュージーランド | New Zealand | English | English |
+| 米国 | United States | English | English |
+| カナダ | Canada | English | English |
+| メキシコ | Mexico | Spanish | Español |
+| ブラジル | Brazil | Portuguese | Português |
+| 英国 | United Kingdom | English | English |
+| フランス | France | French | Français |
+| ドイツ | Germany | German | Deutsch |
+| イタリア | Italy | Italian | Italiano |
+| スペイン | Spain | Spanish | Español |
+| オランダ | Netherlands | Dutch | Nederlands |
+| ベルギー | Belgium | Dutch | Nederlands |
+| スイス | Switzerland | German | Deutsch |
+| スウェーデン | Sweden | Swedish | Svenska |
+| デンマーク | Denmark | Danish | Dansk |
+| ノルウェー | Norway | Norwegian | Norsk |
+| フィンランド | Finland | Finnish | Suomi |
+| イスラエル | Israel | Hebrew | עברית |
+| トルコ | Turkey | Turkish | Türkçe |
+| サウジアラビア | Saudi Arabia | Arabic | العربية |
+| アラブ首長国連邦 | United Arab Emirates | Arabic | العربية |
+| バーレーン | Bahrain | Arabic | العربية |
+| オマーン | Oman | Arabic | العربية |
+| カタール | Qatar | Arabic | العربية |
+| クウェート | Kuwait | Arabic | العربية |
 
 
 ## 利用者登録情報
