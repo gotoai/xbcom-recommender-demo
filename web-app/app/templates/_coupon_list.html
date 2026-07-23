@@ -1,4 +1,45 @@
-{# Coupon list panel body: the page's items + pager. Swapped in place on paging. #}
+{# Coupon-list fragment: sticky head (title + count + category/subcategory filters),
+   the page's coupon cards + pager, and the filtered map markers. Swapped in place on
+   filter/paging; the map pins re-render from `#reco-markers`. Chrome + taxonomy
+   labels are localised via `t` / `category_label`; the filter option *values* and the
+   rest of the coupon data stay English. #}
+
+{# Map markers for the current filter — read by app.js to re-draw the coupon pins. #}
+<script type="application/json" id="reco-markers">{{ markers | tojson }}</script>
+
+<div class="reco-list-head">
+  <div class="reco-list-titles">
+    <span class="reco-list-title">{{ t.coupons }}</span>
+    <span class="reco-list-sub">
+      {{ total }}&nbsp;{{ t.within_radius }}
+      {% if total > marker_cap %}
+      <span class="cap-note">({{ t.map_shows_nearest }} {{ marker_cap }})</span>
+      {% endif %}
+    </span>
+  </div>
+  <div class="coupon-filters">
+    <label class="cf-field">
+      <span class="cf-label">{{ t.category }}</span>
+      <select class="cf-select" data-filter="category">
+        <option value="">{{ t.all }}</option>
+        {% for cat in categories %}
+        <option value="{{ cat.value }}" {% if sel_category == cat.value %}selected{% endif %}>{{ cat.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="cf-field">
+      <span class="cf-label">{{ t.subcategory }}</span>
+      <select class="cf-select" data-filter="subcategory" {% if not sub_options %}disabled{% endif %}>
+        <option value="">{{ t.all }}</option>
+        {% for sub in sub_options %}
+        <option value="{{ sub.value }}" {% if sel_subcategory == sub.value %}selected{% endif %}>{{ sub.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+</div>
+
+<div class="reco-list-body">
 {% if coupons %}
 <ul class="card-list coupon-list">
   {% for c in coupons %}
@@ -14,7 +55,7 @@
         <span class="chip discount-chip">{{ c.discount_label }}</span>
         <span class="chip dist-chip">📍 {{ "%.1f"|format(c.distance_km) }} km</span>
       </div>
-      <div class="card-meta">{{ c.emoji }} {{ c.shop_name_en }} · {{ c.category_en }}</div>
+      <div class="card-meta">{{ c.emoji }} {{ c.shop_name_en }} · {{ c.category_label }}</div>
       <div class="card-meta price-line">
         <span class="price">¥{{ "{:,}".format(c.price) }}</span>
         <span class="period">Until {{ c.coupon_end_date[5:] }}</span>
@@ -26,20 +67,21 @@
 
 <nav class="pager reco-pager" aria-label="Pagination">
   {% if page > 1 %}
-  <button type="button" class="pager-btn" data-page="{{ page - 1 }}">‹ Prev</button>
+  <button type="button" class="pager-btn" data-page="{{ page - 1 }}">‹ {{ t.prev }}</button>
   {% else %}
-  <span class="pager-btn is-disabled">‹ Prev</span>
+  <span class="pager-btn is-disabled">‹ {{ t.prev }}</span>
   {% endif %}
   <span class="pager-info">{{ page }} / {{ total_pages }}</span>
   {% if page < total_pages %}
-  <button type="button" class="pager-btn" data-page="{{ page + 1 }}">Next ›</button>
+  <button type="button" class="pager-btn" data-page="{{ page + 1 }}">{{ t.next }} ›</button>
   {% else %}
-  <span class="pager-btn is-disabled">Next ›</span>
+  <span class="pager-btn is-disabled">{{ t.next }} ›</span>
   {% endif %}
 </nav>
 {% else %}
 <div class="empty">
   <div class="empty-icon">🎟️</div>
-  <p>No active coupons within 5&nbsp;km of your current location.</p>
+  <p>{{ t.no_coupons }}</p>
 </div>
 {% endif %}
+</div>

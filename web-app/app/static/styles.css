@@ -175,33 +175,73 @@ body {
 /* ============ User-mode reco screen (3 stacked panels) ============ */
 .reco { display: flex; flex-direction: column; height: 100%; min-height: 0; }
 .reco .detail-bar { flex: 0 0 auto; }
-.reco .detail-bar-title { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reco .detail-bar-title { font-size: 14px; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Language switcher — sits in the title bar, right of the traveler name */
+.reco-lang {
+  flex: 0 0 auto; margin-inline-start: auto;
+  display: flex; align-items: center; gap: 4px;
+  background: rgba(255, 255, 255, .18); border-radius: 999px; padding: 3px 8px;
+}
+.reco-lang-icon { display: inline-flex; color: #ffc72c; }  /* golden-yellow globe */
+.lang-select {
+  appearance: none; border: 0; background: transparent; color: var(--brand-ink);
+  font-size: 12px; font-weight: 700; cursor: pointer; max-width: 120px;
+}
+/* The option list renders in the OS menu, not on the brand bar — keep it readable. */
+.lang-select option { color: var(--ink); background: var(--card); }
 
 /* Panel 1: map */
 .reco-map-panel { flex: 0 0 40%; display: flex; flex-direction: column; min-height: 0; position: relative; }
 .reco-map { flex: 1 1 auto; min-height: 0; background: var(--line); z-index: 0; }
+
 .reco-map-caption {
   flex: 0 0 auto; font-size: 11px; color: var(--muted);
   background: var(--card); border-top: 1px solid var(--line);
-  padding: 6px 12px; display: flex; align-items: center; gap: 5px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  padding: 6px 12px; display: flex; align-items: center; gap: 10px;
 }
-.reco-map-caption .loc-dot { font-size: 9px; }
+/* "You are here" info truncates; the coupon legend stays fixed at the end. */
+.reco-map-caption .lgd { display: flex; align-items: center; gap: 5px; }
+.reco-map-caption .lgd:first-child { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reco-map-caption .lgd-legend { flex: 0 0 auto; }
 .reco-map-caption .sep { opacity: .5; }
+.reco-map-caption .lgd-dot { font-size: 9px; flex: none; }
+.reco-map-caption .lgd-coupon {
+  width: 9px; height: 9px; border-radius: 50%; background: #e8590c;
+  display: inline-block;
+}
 .leaflet-container { font: inherit; }
 
 /* Panel 2: coupon list (scrolls) */
 .reco-list-panel { flex: 1 1 0; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; background: var(--bg); }
+.reco-list { transition: opacity .15s ease; }
 .reco-list-head {
   position: sticky; top: 0; z-index: 1;
-  display: flex; align-items: baseline; gap: 8px;
+  display: flex; flex-direction: column; gap: 8px;
   background: var(--bg); border-bottom: 1px solid var(--line);
   padding: 9px 12px;
 }
+.reco-list-titles { display: flex; align-items: baseline; gap: 8px; }
 .reco-list-title { font-size: 13px; font-weight: 800; }
 .reco-list-sub { font-size: 12px; color: var(--muted); }
 .reco-list-sub .cap-note { opacity: .8; }
-.reco-list { padding: 10px 12px 16px; transition: opacity .15s ease; }
+.reco-list-body { padding: 10px 12px 16px; }
+
+/* Category / subcategory filters (coupon data values stay English) */
+.coupon-filters { display: flex; gap: 8px; }
+.cf-field { display: flex; flex-direction: column; gap: 3px; flex: 1 1 0; min-width: 0; }
+.cf-label { font-size: 10px; font-weight: 700; color: var(--muted); padding-inline-start: 2px; }
+.cf-select {
+  appearance: none; cursor: pointer; width: 100%;
+  border: 1px solid var(--line); border-radius: 9px;
+  background: var(--card); color: var(--ink);
+  padding: 7px 26px 7px 10px; font-size: 12px; font-weight: 600;
+  text-overflow: ellipsis;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23888' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+}
+.cf-select:disabled { opacity: .5; cursor: default; }
+[dir="rtl"] .cf-select { background-position: left 10px center; padding: 7px 10px 7px 26px; }
 
 /* Coupon cards */
 .coupon-list { gap: 8px; }

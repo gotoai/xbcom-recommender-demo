@@ -45,6 +45,25 @@
 | クウェート | Kuwait | Arabic | العربية |
 
 
+デモのため、下記の言語はUIで個別に対応される。
+
+English
+한국어
+简体中文
+繁體中文
+ภาษาไทย
+Tiếng Việt
+Filipino
+हिन्दी
+Español
+Português
+Français
+Deutsch
+Italiano
+Nederlands
+עברית
+Türkçe
+
 ## 利用者登録情報
 
 下記の個人情報はXB eSIMを利用するために登録する必要がある。

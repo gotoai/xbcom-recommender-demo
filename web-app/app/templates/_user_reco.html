@@ -1,7 +1,20 @@
-<div class="reco" data-user-id="{{ u.id }}">
+<div class="reco" data-user-id="{{ u.id }}" lang="{{ lang }}" dir="{{ dir }}">
   <div class="detail-bar">
-    <button type="button" class="back-btn" id="user-back">‹ Back</button>
-    <span class="detail-bar-title">{{ u.face }} Traveler #{{ u.id }} · {{ u.flag }} {{ u.nationality_en }}</span>
+    <button type="button" class="back-btn" id="user-back">‹ {{ t.back }}</button>
+    <span class="detail-bar-title">{{ u.face }} {{ t.traveler }} #{{ u.id }} · {{ u.flag }} {{ u.nationality_en }}</span>
+    {# Language switcher: overrides the traveler's default UI language for this view. #}
+    <label class="reco-lang" aria-label="{{ t.language }}">
+      <svg class="reco-lang-icon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        <ellipse cx="12" cy="12" rx="4" ry="9" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M3.2 9h17.6M3.2 15h17.6" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      </svg>
+      <select class="lang-select" data-user-id="{{ u.id }}">
+        {% for code, name in language_options %}
+        <option value="{{ code }}" {% if lang == code %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </label>
   </div>
 
   {# --- Panel 1: map centred on the traveler's current location --- #}
@@ -9,43 +22,41 @@
     <div id="reco-map" class="reco-map"></div>
     {% if loc %}
     <div class="reco-map-caption">
-      <span class="loc-dot">🔵</span> You are here: {{ loc.ward_en }}
-      <span class="sep">·</span> {{ loc.date }} ({{ loc.weekday_label_en }}) {{ loc.timespan }}
+      <span class="lgd">
+        <span class="lgd-dot lgd-you">🔵</span> {{ t.you_are_here }}: {{ loc.ward_en }}
+        <span class="sep">·</span> {{ loc.date }} ({{ loc.weekday_label_en }}) {{ now_hm }}
+      </span>
+      <span class="lgd lgd-legend">
+        <span class="lgd-dot lgd-coupon" aria-hidden="true"></span> {{ t.coupon }}
+      </span>
     </div>
     {% endif %}
-    {# map init data: center + coupon pins (nearest {{ marker_cap }}) #}
+    {# map init data: center + i18n chrome strings (markers live in the coupon fragment) #}
     <script type="application/json" id="reco-data">
     {
       "center": {% if loc %}{"lat": {{ loc.latitude }}, "lon": {{ loc.longitude }}}{% else %}null{% endif %},
       "radius_km": {{ radius_km }},
-      "markers": {{ markers | tojson }}
+      "i18n": {{ t | tojson }}
     }
     </script>
   </section>
 
-  {# --- Panel 2: the searched coupons, paginated 5/page --- #}
+  {# --- Panel 2: the searched coupons — filter bar + list, paginated 5/page --- #}
   <section class="reco-list-panel">
-    <div class="reco-list-head">
-      <span class="reco-list-title">Coupons</span>
-      <span class="reco-list-sub">
-        {{ total }} within 5&nbsp;km
-        {% if total > marker_cap %}<span class="cap-note">(map shows nearest {{ marker_cap }})</span>{% endif %}
-      </span>
-    </div>
-    <div id="reco-list" class="reco-list" data-user-id="{{ u.id }}">
+    <div id="reco-list" class="reco-list" data-user-id="{{ u.id }}" data-page="{{ page }}">
       {% include "_coupon_list.html" %}
     </div>
   </section>
 
   {# --- Panel 3: concierge chat placeholder (backend later) --- #}
   <section class="reco-chat-panel">
-    <div class="reco-chat-head">🤖 Concierge<span class="soon">Coming soon</span></div>
+    <div class="reco-chat-head">🤖 {{ t.concierge }}<span class="soon">{{ t.coming_soon }}</span></div>
     <div class="reco-chat-body">
-      <div class="msg assistant muted">Ask me anything about these coupons (coming soon).</div>
+      <div class="msg assistant muted">{{ t.chat_hint }}</div>
     </div>
     <form class="reco-chat-input" onsubmit="return false;">
-      <input type="text" placeholder="Type a message… (coming soon)" disabled>
-      <button type="submit" disabled>Send</button>
+      <input type="text" placeholder="{{ t.chat_placeholder }}" disabled>
+      <button type="submit" disabled>{{ t.send }}</button>
     </form>
   </section>
 </div>

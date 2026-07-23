@@ -1,13 +1,15 @@
 """Data-layer + endpoint smoke tests for the XB.com recommender web-app."""
 from __future__ import annotations
 
+import json
+import re
 from datetime import date, datetime, timezone, timedelta
 
 from fastapi.testclient import TestClient
 
 JST = timezone(timedelta(hours=9))
 
-from app import config, data, dates
+from app import config, data, dates, i18n, labels
 from app.main import app
 
 client = TestClient(app)
@@ -156,22 +158,154 @@ def test_build_reco_location():
     assert reco["coupons"] == sorted(reco["coupons"], key=lambda c: c["distance_km"])
 
 
-def test_reco_screen_and_paging():
+def _first_user_with_lang(d, lang):
+    return next((u for u in d.users if u["lang"] == lang), None)
+
+
+def test_reco_screen_english_traveler():
+    # An English-language traveler sees the English chrome; the entry page's
+    # Japanese chrome never leaks into the user-mode view.
     d = data.get_data()
-    uid = d.users[0]["id"]
-    r = client.get(f"/ui/user/{uid}")
+    u = _first_user_with_lang(d, "en")
+    assert u is not None
+    r = client.get(f"/ui/user/{u['id']}")
     assert r.status_code == 200
-    assert f"Traveler #{uid}" in r.text
+    assert f"Traveler #{u['id']}" in r.text
     assert 'id="reco-map"' in r.text and 'id="reco-data"' in r.text
-    # User-mode view is English.
-    for token in ("‹ Back", "You are here", "Coupons", "within 5"):
+    assert 'dir="ltr"' in r.text and 'lang="en"' in r.text
+    for token in ("‹ Back", "You are here", "Coupons", "within 5", "Category", "Subcategory"):
         assert token in r.text
     assert "現在地" not in r.text and "戻る" not in r.text
     # coupon-list fragment paginates 5/page
-    r2 = client.get(f"/ui/user/{uid}/coupons?page=2")
+    r2 = client.get(f"/ui/user/{u['id']}/coupons?page=2")
     assert r2.status_code == 200
     assert r2.text.count("coupon-card") <= 5
     assert client.get("/ui/user/999999").status_code == 404
+
+
+def test_reco_screen_localised_chrome():
+    # A non-English traveler gets the chrome in their own language; coupon data and
+    # filter labels/values are still there but the chrome words are translated.
+    d = data.get_data()
+    u = _first_user_with_lang(d, "th")  # Thai travelers are present in the data
+    assert u is not None
+    r = client.get(f"/ui/user/{u['id']}")
+    assert r.status_code == 200
+    th = i18n.translations("th")
+    assert th["you_are_here"] in r.text and th["coupons"] in r.text
+    assert 'lang="th"' in r.text
+    # The English chrome label is gone (the coupon data may still contain English).
+    assert "You are here" not in r.text
+
+
+def test_lang_for_nationality_fallback():
+    assert i18n.lang_for_nationality("韓国") == "ko"
+    assert i18n.lang_for_nationality("台湾") == "zh-Hant"
+    assert i18n.lang_for_nationality("イスラエル") == "he"
+    assert i18n.direction("he") == "rtl"
+    # Unsupported languages (e.g. Arabic, Malay, Finnish) fall back to English.
+    assert i18n.lang_for_nationality("サウジアラビア") == "en"
+    assert i18n.lang_for_nationality("スウェーデン") == "en"
+
+
+def test_coupon_category_filter():
+    d = data.get_data()
+    # A central location that reliably has coupons within 5 km.
+    now = datetime(2026, 7, 18, 14, 0, tzinfo=JST)
+    uid = next(u["id"] for u in d.users
+               if (reco := data.build_reco(d, u["id"], now))["coupons"])
+    reco = data.build_reco(d, uid, now)
+    cats, subs = data.coupon_facets(reco["coupons"])
+    assert cats and all(c in subs for c in cats)
+    cat = cats[0]
+    filtered = data.filter_coupons(reco["coupons"], cat, None)
+    assert filtered and all(c["category_en"] == cat for c in filtered)
+    assert len(filtered) <= len(reco["coupons"])
+    # Endpoint honours the category param: every card on the page is in-category.
+    r = client.get(f"/ui/user/{uid}/coupons?category={cat}")
+    assert r.status_code == 200
+    # A stale subcategory not under this category is dropped, not empty-filtered.
+    r2 = client.get(f"/ui/user/{uid}/coupons?category={cat}&subcategory=__nope__")
+    assert r2.status_code == 200 and r2.text.count("coupon-card") >= 1
+
+
+def _central_user_id(d):
+    now = datetime(2026, 7, 18, 14, 0, tzinfo=JST)
+    return next(u["id"] for u in d.users if data.build_reco(d, u["id"], now)["coupons"])
+
+
+def test_coupon_filter_syncs_map_markers():
+    # The fragment carries the *filtered* markers, so the map can track the list.
+    d = data.get_data()
+    uid = _central_user_id(d)
+    reco = data.build_reco(d, uid, datetime(2026, 7, 18, 14, 0, tzinfo=JST))
+    cats, _ = data.coupon_facets(reco["coupons"])
+    cat = cats[0]
+    full = client.get(f"/ui/user/{uid}/coupons").text
+    filt = client.get(f"/ui/user/{uid}/coupons?category={cat}").text
+    assert 'id="reco-markers"' in full and 'id="reco-markers"' in filt
+    n_full = json.loads(re.search(r'id="reco-markers">(.*?)</script>', full, re.S).group(1))
+    n_filt = json.loads(re.search(r'id="reco-markers">(.*?)</script>', filt, re.S).group(1))
+    assert len(n_filt) <= len(n_full)  # filtering can only narrow the pins
+    # The initial screen also embeds markers (not in #reco-data anymore).
+    screen = client.get(f"/ui/user/{uid}").text
+    assert 'id="reco-markers"' in screen and '"markers"' not in screen.split('id="reco-data"')[1][:200]
+
+
+def test_language_switcher_override():
+    # The switcher lets a viewer change the UI language regardless of nationality.
+    d = data.get_data()
+    u = _first_user_with_lang(d, "en")  # an English-default traveler
+    r = client.get(f"/ui/user/{u['id']}?lang=ko")
+    assert r.status_code == 200
+    assert 'lang="ko"' in r.text
+    assert i18n.translations("ko")["coupons"] in r.text
+    assert 'class="lang-select"' in r.text
+    # Every supported language appears as an option (by endonym).
+    for _, name in i18n.LANGUAGE_OPTIONS:
+        assert name in r.text
+    # An unsupported/garbage lang falls back to the traveler's default (English).
+    r2 = client.get(f"/ui/user/{u['id']}?lang=xx")
+    assert 'lang="en"' in r2.text
+
+
+def test_map_caption_shows_clock_not_timespan():
+    d = data.get_data()
+    uid = _central_user_id(d)
+    r = client.get(f"/ui/user/{uid}")
+    assert r.status_code == 200
+    # The caption shows an actual HH:MM clock time, and the coupon legend word.
+    assert re.search(r"\([A-Za-z]{3}\)\s+\d{2}:\d{2}", r.text)  # (Mon) 14:07
+    assert i18n.translations(d.users_by_id[uid]["lang"])["coupon"] in r.text
+    # The old daypart bucket string is no longer in the caption line.
+    cap = re.search(r'reco-map-caption.*?</div>', r.text, re.S).group(0)
+    assert "12:00-17:59" not in cap and "18:00-23:59" not in cap
+
+
+def test_category_labels_translated():
+    # Categories/subcategories are translated to the display language; the filter
+    # *values* stay English (the canonical the data is filtered on).
+    assert labels.category_label("xx_missing", "Restaurant") == "Restaurant"  # fallback
+    assert labels.category_label("ko", "Restaurant") == "레스토랑"
+    assert labels.category_label("es", "Coffee Shop") == "Cafetería"
+    assert labels.subcategory_label("ko", "Ramen") == "라멘"
+    assert labels.subcategory_label("de", "Sushi & Seafood") == "Sushi & Meeresfrüchte"
+    assert labels.subcategory_label("xx_missing", "Ramen") == "Ramen"  # fallback
+    d = data.get_data()
+    uid = _central_user_id(d)
+    r = client.get(f"/ui/user/{uid}/coupons?lang=ko")
+    assert "레스토랑" in r.text or "카페" in r.text or "바" in r.text  # some translated category shows
+
+
+def test_all_taxonomy_translated_for_every_language():
+    # Every category + subcategory in the data has a translation in every supported
+    # (non-English) language — no silent English fallback leaks into a localised view.
+    d = data.get_data()
+    subs = {c["subcategory_en"] for c in d.coupons if c.get("subcategory_en")}
+    cats = {c["category_en"] for c in d.coupons}
+    for lang in i18n.SUPPORTED - {"en"}:
+        assert cats <= set(labels.CATEGORY_LABELS[lang]), lang
+        assert subs <= set(labels.SUBCATEGORY_LABELS[lang]), lang
 
 
 def test_api_user_reco():

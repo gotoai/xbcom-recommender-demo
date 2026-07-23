@@ -28,7 +28,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime
 
-from . import config, dates
+from . import config, dates, i18n
 
 # The three daypart timespans the visit data is bucketed into.
 TIMESPANS = ("06:00-11:59", "12:00-17:59", "18:00-23:59")
@@ -263,7 +263,8 @@ def _load_coupons(today: date, shops: dict[str, dict]) -> list[dict]:
         )
         c["shop_name_en"] = shop.get("shop_name_en", "") or row["shop_name"]
         c["product_name_en"] = product_en.get(row["product_id"], "") or row["product_name"]
-        c["category_en"] = category_en(row["category"])
+        c["category_en"] = row.get("category_en") or category_en(row["category"])
+        c["subcategory_en"] = row.get("subcategory_en", "") or row.get("subcategory", "")
         c["address"] = shop.get("address", "")
         c["latitude"] = shop.get("latitude")
         c["longitude"] = shop.get("longitude")
@@ -296,6 +297,7 @@ def _load(today: date) -> Data:
             "id": tid,
             "nationality": nat,
             "nationality_en": nationality_en(nat),
+            "lang": i18n.lang_for_nationality(nat),
             "flag": nationality_flag(nat),
             "gender": gender,
             "face": gender_face(gender),
@@ -420,6 +422,35 @@ def build_reco(d: Data, tid: int, now: datetime,
         "coupons": coupons,
         "radius_km": radius_km,
     }
+
+
+def coupon_facets(coupons: list[dict]) -> tuple[list[str], dict[str, list[str]]]:
+    """Filter options from a coupon set (English labels, as shown to the user):
+
+      * ``categories``  — sorted unique ``category_en``.
+      * ``subcats``     — ``category_en -> sorted unique subcategory_en`` within it,
+                          so the subcategory dropdown can depend on the category.
+    """
+    subs: dict[str, set[str]] = defaultdict(set)
+    for c in coupons:
+        cat = c["category_en"]
+        subs[cat]  # ensure the category is present even if it has no subcategory
+        if c.get("subcategory_en"):
+            subs[cat].add(c["subcategory_en"])
+    categories = sorted(subs)
+    return categories, {cat: sorted(s) for cat, s in subs.items()}
+
+
+def filter_coupons(coupons: list[dict], category: str | None,
+                   subcategory: str | None) -> list[dict]:
+    """Coupons matching the (optional) English category / subcategory selection.
+    ``None``/empty means 'unset' (no constraint)."""
+    out = coupons
+    if category:
+        out = [c for c in out if c["category_en"] == category]
+    if subcategory:
+        out = [c for c in out if c.get("subcategory_en") == subcategory]
+    return out
 
 
 def reco_map_markers(coupons: list[dict], cap: int = MAP_MARKER_CAP) -> list[dict]:

@@ -15,7 +15,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import config, data, dates
+from . import config, data, dates, i18n, labels
 
 COUPON_PAGE_SIZE = 5  # coupons per page in the reco list panel
 
@@ -72,45 +72,93 @@ def _reco_or_404(traveler_id: int) -> dict | None:
     return data.build_reco(d, traveler_id, dates.jst_now())
 
 
-@app.get("/ui/user/{traveler_id}", response_class=HTMLResponse)
-async def ui_user_reco(request: Request, traveler_id: int, page: int = 1) -> HTMLResponse:
-    """The traveler's coupon-recommendation screen (user mode): a map centred on
-    their current location, the active coupons within 5 km (paginated list), and a
-    concierge-chat placeholder."""
-    reco = _reco_or_404(traveler_id)
-    if reco is None:
-        return HTMLResponse("<p class='error'>不明なユーザーです。</p>", status_code=404)
-    coupons = reco["coupons"]
-    page_items, page, total_pages = data.paginate(coupons, page, COUPON_PAGE_SIZE)
-    return templates.TemplateResponse(request, "_user_reco.html", {
+def _coupon_list_ctx(reco: dict, category: str | None, subcategory: str | None,
+                     page: int, lang: str, t: dict) -> dict:
+    """Context for the swap-in coupon-list fragment: the category/subcategory filter
+    facets, the filtered + paginated coupons, and the current selection — plus the
+    map markers for the *filtered* set, so the map stays in sync with the list.
+
+    Filter option **values** and the selection stay English (the canonical
+    ``category_en`` / ``subcategory_en`` the data filters on); the displayed
+    **labels** — and the category on each coupon card — are translated to ``lang``.
+    The subcategory dropdown depends on the chosen category; a stale subcategory (one
+    not offered under the selected category) is dropped rather than empty-filtering.
+    """
+    all_coupons = reco["coupons"]
+    category = category or None
+    subcategory = subcategory or None
+    categories, subcats = data.coupon_facets(all_coupons)
+    if category not in categories:
+        category = None
+    sub_values = subcats.get(category, []) if category else []
+    if subcategory not in sub_values:
+        subcategory = None
+    filtered = data.filter_coupons(all_coupons, category, subcategory)
+    page_items, page, total_pages = data.paginate(filtered, page, COUPON_PAGE_SIZE)
+    for c in page_items:
+        c["category_label"] = labels.category_label(lang, c["category_en"])
+    return {
         "u": reco["user"],
-        "loc": reco["location"],
-        "radius_km": reco["radius_km"],
-        "total": len(coupons),
-        "markers": data.reco_map_markers(coupons),
-        "marker_cap": data.MAP_MARKER_CAP,
         "coupons": page_items,
+        "total": len(filtered),
+        "grand_total": len(all_coupons),
         "page": page,
         "total_pages": total_pages,
+        "categories": [{"value": c, "label": labels.category_label(lang, c)}
+                       for c in categories],
+        "sub_options": [{"value": s, "label": labels.subcategory_label(lang, s)}
+                        for s in sub_values],
+        "sel_category": category or "",
+        "sel_subcategory": subcategory or "",
+        "markers": data.reco_map_markers(filtered),
+        "marker_cap": data.MAP_MARKER_CAP,
+        "lang": lang,
+        "t": t,
+    }
+
+
+@app.get("/ui/user/{traveler_id}", response_class=HTMLResponse)
+async def ui_user_reco(request: Request, traveler_id: int, page: int = 1,
+                       category: str | None = None,
+                       subcategory: str | None = None,
+                       lang: str | None = None) -> HTMLResponse:
+    """The traveler's coupon-recommendation screen (user mode): a map centred on
+    their current location, the active coupons within 5 km (filterable by category /
+    subcategory, paginated), and a concierge-chat placeholder. Chrome is rendered in
+    the traveler's own language by default; ``lang`` lets the viewer switch it. The
+    coupon data itself stays English (its taxonomy labels excepted)."""
+    reco = _reco_or_404(traveler_id)
+    if reco is None:
+        return HTMLResponse("<p class='error'>Unknown user.</p>", status_code=404)
+    lang = i18n.resolve_lang(lang, reco["user"]["lang"])
+    t = i18n.translations(lang)
+    ctx = _coupon_list_ctx(reco, category, subcategory, page, lang, t)
+    ctx.update({
+        "loc": reco["location"],
+        "radius_km": reco["radius_km"],
+        "now_hm": dates.jst_now().strftime("%H:%M"),
+        "dir": i18n.direction(lang),
+        "language_options": i18n.LANGUAGE_OPTIONS,
     })
+    return templates.TemplateResponse(request, "_user_reco.html", ctx)
 
 
 @app.get("/ui/user/{traveler_id}/coupons", response_class=HTMLResponse)
-async def ui_user_coupons(request: Request, traveler_id: int, page: int = 1) -> HTMLResponse:
-    """Just the coupon-list panel (list + pager) for a given page — swapped in place
-    by the reco screen's pager without reloading the map."""
+async def ui_user_coupons(request: Request, traveler_id: int, page: int = 1,
+                          category: str | None = None,
+                          subcategory: str | None = None,
+                          lang: str | None = None) -> HTMLResponse:
+    """Just the coupon-list panel (filter bar + list + pager, plus the filtered map
+    markers) — swapped in place by the reco screen's filters and pager without
+    reloading the map."""
     reco = _reco_or_404(traveler_id)
     if reco is None:
-        return HTMLResponse("<p class='error'>不明なユーザーです。</p>", status_code=404)
-    coupons = reco["coupons"]
-    page_items, page, total_pages = data.paginate(coupons, page, COUPON_PAGE_SIZE)
-    return templates.TemplateResponse(request, "_coupon_list.html", {
-        "u": reco["user"],
-        "total": len(coupons),
-        "coupons": page_items,
-        "page": page,
-        "total_pages": total_pages,
-    })
+        return HTMLResponse("<p class='error'>Unknown user.</p>", status_code=404)
+    lang = i18n.resolve_lang(lang, reco["user"]["lang"])
+    t = i18n.translations(lang)
+    return templates.TemplateResponse(
+        request, "_coupon_list.html",
+        _coupon_list_ctx(reco, category, subcategory, page, lang, t))
 
 
 @app.get("/api/users")
