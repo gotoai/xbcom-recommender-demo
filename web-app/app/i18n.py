@@ -399,6 +399,126 @@ for _lang, _word in _COUPON_SINGULAR.items():
     TRANSLATIONS.setdefault(_lang, {})["coupon"] = _word
 TRANSLATIONS["en"]["language"] = "Language"
 
+# Coupon-detail screen strings: the redeem button + guidance overlay (both called out
+# in the brief as user-language) and the condition labels. Merged into TRANSLATIONS;
+# any language missing a key still falls back to English via ``translations()``.
+_COUPON_DETAIL: dict[str, dict[str, str]] = {
+    "en": {"use_this_coupon": "Use This Coupon",
+           "coupon_guidance": "Show this screen at the store to redeem your discount.",
+           "coupon_activated": "Coupon activated", "details": "Details",
+           "discount": "Discount", "price": "Price", "valid_period": "Valid",
+           "coupon_code": "Coupon code", "distance": "Distance"},
+    "ko": {"use_this_coupon": "이 쿠폰 사용하기",
+           "coupon_guidance": "매장에서 이 화면을 보여주고 할인을 받으세요.",
+           "coupon_activated": "쿠폰이 활성화되었습니다", "details": "상세 정보",
+           "discount": "할인", "price": "가격", "valid_period": "유효 기간",
+           "coupon_code": "쿠폰 코드", "distance": "거리"},
+    "zh-Hans": {"use_this_coupon": "使用此优惠券",
+                "coupon_guidance": "在店内出示此屏幕即可享受折扣。",
+                "coupon_activated": "优惠券已激活", "details": "详情",
+                "discount": "折扣", "price": "价格", "valid_period": "有效期",
+                "coupon_code": "优惠券代码", "distance": "距离"},
+    "zh-Hant": {"use_this_coupon": "使用此優惠券",
+                "coupon_guidance": "在店內出示此畫面即可享有折扣。",
+                "coupon_activated": "優惠券已啟用", "details": "詳情",
+                "discount": "折扣", "price": "價格", "valid_period": "有效期",
+                "coupon_code": "優惠券代碼", "distance": "距離"},
+    "th": {"use_this_coupon": "ใช้คูปองนี้",
+           "coupon_guidance": "แสดงหน้าจอนี้ที่ร้านเพื่อรับส่วนลด",
+           "coupon_activated": "เปิดใช้งานคูปองแล้ว", "details": "รายละเอียด",
+           "discount": "ส่วนลด", "price": "ราคา", "valid_period": "ระยะเวลาที่ใช้ได้",
+           "coupon_code": "รหัสคูปอง", "distance": "ระยะทาง"},
+    "vi": {"use_this_coupon": "Dùng phiếu này",
+           "coupon_guidance": "Xuất trình màn hình này tại cửa hàng để nhận ưu đãi.",
+           "coupon_activated": "Đã kích hoạt phiếu giảm giá", "details": "Chi tiết",
+           "discount": "Ưu đãi", "price": "Giá", "valid_period": "Hiệu lực",
+           "coupon_code": "Mã phiếu", "distance": "Khoảng cách"},
+    "fil": {"use_this_coupon": "Gamitin ang Kupon",
+            "coupon_guidance": "Ipakita ang screen na ito sa tindahan para makuha ang diskwento.",
+            "coupon_activated": "Na-activate ang kupon", "details": "Mga detalye",
+            "discount": "Diskwento", "price": "Presyo", "valid_period": "Bisa",
+            "coupon_code": "Code ng kupon", "distance": "Distansya"},
+    "hi": {"use_this_coupon": "यह कूपन इस्तेमाल करें",
+           "coupon_guidance": "छूट पाने के लिए स्टोर पर यह स्क्रीन दिखाएँ।",
+           "coupon_activated": "कूपन सक्रिय हो गया", "details": "विवरण",
+           "discount": "छूट", "price": "कीमत", "valid_period": "वैधता",
+           "coupon_code": "कूपन कोड", "distance": "दूरी"},
+    "es": {"use_this_coupon": "Usar este cupón",
+           "coupon_guidance": "Muestra esta pantalla en la tienda para canjear tu descuento.",
+           "coupon_activated": "Cupón activado", "details": "Detalles",
+           "discount": "Descuento", "price": "Precio", "valid_period": "Válido",
+           "coupon_code": "Código del cupón", "distance": "Distancia"},
+    "pt": {"use_this_coupon": "Usar este cupom",
+           "coupon_guidance": "Mostre esta tela na loja para resgatar seu desconto.",
+           "coupon_activated": "Cupom ativado", "details": "Detalhes",
+           "discount": "Desconto", "price": "Preço", "valid_period": "Válido",
+           "coupon_code": "Código do cupom", "distance": "Distância"},
+    "fr": {"use_this_coupon": "Utiliser ce coupon",
+           "coupon_guidance": "Présentez cet écran en magasin pour bénéficier de la réduction.",
+           "coupon_activated": "Coupon activé", "details": "Détails",
+           "discount": "Réduction", "price": "Prix", "valid_period": "Validité",
+           "coupon_code": "Code du coupon", "distance": "Distance"},
+    "de": {"use_this_coupon": "Diesen Gutschein einlösen",
+           "coupon_guidance": "Zeigen Sie diesen Bildschirm im Geschäft, um Ihren Rabatt einzulösen.",
+           "coupon_activated": "Gutschein aktiviert", "details": "Details",
+           "discount": "Rabatt", "price": "Preis", "valid_period": "Gültig",
+           "coupon_code": "Gutscheincode", "distance": "Entfernung"},
+    "it": {"use_this_coupon": "Usa questo coupon",
+           "coupon_guidance": "Mostra questa schermata in negozio per usare lo sconto.",
+           "coupon_activated": "Coupon attivato", "details": "Dettagli",
+           "discount": "Sconto", "price": "Prezzo", "valid_period": "Validità",
+           "coupon_code": "Codice coupon", "distance": "Distanza"},
+    "nl": {"use_this_coupon": "Deze coupon gebruiken",
+           "coupon_guidance": "Toon dit scherm in de winkel om je korting te verzilveren.",
+           "coupon_activated": "Coupon geactiveerd", "details": "Details",
+           "discount": "Korting", "price": "Prijs", "valid_period": "Geldig",
+           "coupon_code": "Couponcode", "distance": "Afstand"},
+    "he": {"use_this_coupon": "השתמש בקופון זה",
+           "coupon_guidance": "הצג מסך זה בחנות כדי לממש את ההנחה.",
+           "coupon_activated": "הקופון הופעל", "details": "פרטים",
+           "discount": "הנחה", "price": "מחיר", "valid_period": "בתוקף",
+           "coupon_code": "קוד קופון", "distance": "מרחק"},
+    "tr": {"use_this_coupon": "Bu kuponu kullan",
+           "coupon_guidance": "İndirimden yararlanmak için bu ekranı mağazada gösterin.",
+           "coupon_activated": "Kupon etkinleştirildi", "details": "Ayrıntılar",
+           "discount": "İndirim", "price": "Fiyat", "valid_period": "Geçerlilik",
+           "coupon_code": "Kupon kodu", "distance": "Mesafe"},
+}
+for _lang, _strings in _COUPON_DETAIL.items():
+    TRANSLATIONS.setdefault(_lang, {}).update(_strings)
+
+# "Close" (redeem-QR popup dismiss button aria-label). English back-fills any gap.
+_CLOSE = {
+    "en": "Close", "ko": "닫기", "zh-Hans": "关闭", "zh-Hant": "關閉", "th": "ปิด",
+    "vi": "Đóng", "fil": "Isara", "hi": "बंद करें", "es": "Cerrar", "pt": "Fechar",
+    "fr": "Fermer", "de": "Schließen", "it": "Chiudi", "nl": "Sluiten",
+    "he": "סגור", "tr": "Kapat",
+}
+for _lang, _word in _CLOSE.items():
+    TRANSLATIONS.setdefault(_lang, {})["close"] = _word
+
+# Favorites: the "My favorites" filter checkbox label and the heart button aria-label.
+_FAVORITES_STRINGS: dict[str, dict[str, str]] = {
+    "en": {"my_favorites": "My favorites", "favorite": "Favorite"},
+    "ko": {"my_favorites": "즐겨찾기", "favorite": "즐겨찾기"},
+    "zh-Hans": {"my_favorites": "我的收藏", "favorite": "收藏"},
+    "zh-Hant": {"my_favorites": "我的收藏", "favorite": "收藏"},
+    "th": {"my_favorites": "รายการโปรด", "favorite": "รายการโปรด"},
+    "vi": {"my_favorites": "Yêu thích", "favorite": "Yêu thích"},
+    "fil": {"my_favorites": "Mga paborito", "favorite": "Paborito"},
+    "hi": {"my_favorites": "मेरी पसंद", "favorite": "पसंदीदा"},
+    "es": {"my_favorites": "Mis favoritos", "favorite": "Favorito"},
+    "pt": {"my_favorites": "Meus favoritos", "favorite": "Favorito"},
+    "fr": {"my_favorites": "Mes favoris", "favorite": "Favori"},
+    "de": {"my_favorites": "Meine Favoriten", "favorite": "Favorit"},
+    "it": {"my_favorites": "I miei preferiti", "favorite": "Preferito"},
+    "nl": {"my_favorites": "Mijn favorieten", "favorite": "Favoriet"},
+    "he": {"my_favorites": "המועדפים שלי", "favorite": "מועדף"},
+    "tr": {"my_favorites": "Favorilerim", "favorite": "Favori"},
+}
+for _lang, _strings in _FAVORITES_STRINGS.items():
+    TRANSLATIONS.setdefault(_lang, {}).update(_strings)
+
 # Language dropdown: (code, endonym) in menu order. Codes must be TRANSLATIONS keys.
 LANGUAGE_OPTIONS: list[tuple[str, str]] = [
     ("en", "English"), ("ko", "한국어"), ("zh-Hans", "简体中文"),

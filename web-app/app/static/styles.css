@@ -183,7 +183,7 @@ body {
   display: flex; align-items: center; gap: 4px;
   background: rgba(255, 255, 255, .18); border-radius: 999px; padding: 3px 8px;
 }
-.reco-lang-icon { display: inline-flex; color: #ffc72c; }  /* golden-yellow globe */
+.reco-lang-icon { display: inline-flex; color: #ff8c1a; }  /* orange globe */
 .lang-select {
   appearance: none; border: 0; background: transparent; color: var(--brand-ink);
   font-size: 12px; font-weight: 700; cursor: pointer; max-width: 120px;
@@ -243,9 +243,31 @@ body {
 .cf-select:disabled { opacity: .5; cursor: default; }
 [dir="rtl"] .cf-select { background-position: left 10px center; padding: 7px 10px 7px 26px; }
 
+/* "My favorites" filter checkbox — sits in the filter row, self-aligned to bottom. */
+.cf-check {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 5px; align-self: flex-end;
+  padding: 7px 4px; font-size: 12px; font-weight: 700; color: var(--muted); cursor: pointer;
+  white-space: nowrap;
+}
+.cf-check input { accent-color: var(--brand); cursor: pointer; margin: 0; }
+.cf-check-heart { fill: none; stroke: currentColor; stroke-width: 1.8; }
+.cf-check:has(input:checked) { color: var(--brand); }
+.cf-check:has(input:checked) .cf-check-heart { fill: var(--brand); stroke: var(--brand); }
+
 /* Coupon cards */
 .coupon-list { gap: 8px; }
-.coupon-card { align-items: flex-start; gap: 10px; padding: 10px; }
+.coupon-card { align-items: flex-start; gap: 10px; padding: 10px; position: relative; }
+/* Favorite heart — top-right corner of the card. */
+.coupon-card .card-title { padding-inline-end: 22px; }
+.cpn-fav {
+  position: absolute; top: 6px; inset-inline-end: 8px;
+  border: 0; background: transparent; padding: 2px; line-height: 0; cursor: pointer;
+  color: var(--muted);
+}
+.cpn-fav svg { fill: none; stroke: currentColor; stroke-width: 1.8; transition: transform .1s ease; }
+.cpn-fav:active svg { transform: scale(.85); }
+.cpn-fav.is-fav { color: var(--brand); }
+.cpn-fav.is-fav svg { fill: var(--brand); stroke: var(--brand); }
 .cpn-thumb {
   width: 52px; height: 52px; border-radius: 10px; flex: none; overflow: hidden;
   background: var(--line); display: grid; place-items: center;
@@ -288,3 +310,99 @@ body {
   border: 0; background: var(--line); color: var(--muted); border-radius: 999px;
   padding: 9px 16px; font-weight: 700;
 }
+
+.coupon-card { cursor: pointer; }
+
+/* ============ Coupon detail screen (image 40% / details 30% / agent 30%) ============ */
+/* Second overlay layer — sits above the user/reco overlay. */
+.overlay-2 { z-index: 40; }
+#coupon-content { display: flex; flex-direction: column; height: 100%; }
+
+.coupon-detail { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.coupon-detail .detail-bar { flex: 0 0 auto; }
+.coupon-detail .detail-bar-title {
+  font-size: 14px; flex: 1 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Panel 1 (40%): hero image + guidance overlay + redeem CTA */
+.cd-image-panel {
+  flex: 4 1 0; min-height: 0; position: relative; overflow: hidden; background: var(--line);
+}
+.cd-image { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cd-image-fallback { width: 100%; height: 100%; display: grid; place-items: center; font-size: 76px; }
+.cd-guidance {
+  position: absolute; top: 12px; inset-inline: 12px;
+  background: rgba(16, 24, 40, .55); color: #fff; -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px); padding: 8px 12px; border-radius: 10px;
+  font-size: 12px; line-height: 1.4; text-align: center;
+}
+.cd-use-btn {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  border: 0; background: var(--accent); color: #fff; font-weight: 800; font-size: 15px;
+  padding: 12px 26px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .3);
+}
+.cd-use-btn:active { transform: translateX(-50%) scale(.97); }
+
+/* Panel 2 (30%): product + coupon conditions */
+.cd-details-panel { flex: 3 1 0; min-height: 0; overflow-y: auto; background: var(--bg); padding: 12px 14px; }
+.cd-details-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.cd-product-name { font-size: 16px; font-weight: 800; line-height: 1.3; flex: 1 1 auto; min-width: 0; }
+/* Favorite heart in the details header: inline (not absolute like the card heart). */
+.cd-fav { position: static; flex: none; margin: -2px -2px 0 0; }
+.cd-shop { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.cd-desc { font-size: 13px; line-height: 1.5; margin: 10px 0 0; }
+.cd-conditions {
+  margin: 12px 0 0; display: flex; flex-direction: column;
+  background: var(--card); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden;
+}
+.cd-conditions > div {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding: 9px 12px; border-bottom: 1px solid var(--line);
+}
+.cd-conditions > div:last-child { border-bottom: 0; }
+.cd-conditions dt { margin: 0; font-size: 12px; color: var(--muted); flex: none; }
+.cd-conditions dd { margin: 0; font-size: 13px; font-weight: 600; text-align: end; min-width: 0; }
+.cd-conditions .cd-discount { color: var(--accent); font-weight: 800; }
+.cd-conditions .cd-code { font-family: ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: .5px; }
+
+/* Panel 3 (30%): agent placeholder (reuses the chat-placeholder look) */
+.cd-agent-panel {
+  flex: 3 1 0; min-height: 0; border-top: 1px solid var(--line);
+  background: var(--card); display: flex; flex-direction: column; overflow: hidden;
+}
+.cd-agent-panel .reco-chat-body { flex: 1 1 auto; overflow-y: auto; }
+
+/* Redeem QR popup — top overlay above the coupon detail. White sheet regardless of
+   theme (a QR needs a light quiet zone to scan). */
+.qr-modal {
+  position: absolute; inset: 0; z-index: 50; display: grid; place-items: center;
+  padding: 20px; background: rgba(0, 0, 0, .55);
+}
+.qr-modal[hidden] { display: none; }
+.qr-sheet {
+  position: relative; width: 100%; max-width: 320px; text-align: center;
+  background: #fff; color: #1b2733; border-radius: 18px; padding: 22px 20px 18px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .45);
+}
+.qr-close {
+  position: absolute; top: 6px; inset-inline-end: 10px; border: 0; background: transparent;
+  font-size: 26px; line-height: 1; color: #6b7684; cursor: pointer;
+}
+.qr-title { font-size: 15px; font-weight: 800; margin-bottom: 14px; }
+.qr-frame { position: relative; width: 240px; height: 240px; margin: 0 auto; }
+.qr-img { width: 240px; height: 240px; display: block; }
+/* Centred XB eSIM logo — white pad keeps it legible over the QR (level-H tolerates it). */
+.qr-logo {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; line-height: 1;
+  background: #fff; border-radius: 9px; padding: 5px 7px; box-shadow: 0 0 0 3px #fff;
+}
+.qr-logo b { color: var(--brand); font-size: 16px; font-weight: 900; letter-spacing: .5px; }
+.qr-logo span { font-size: 8px; font-weight: 800; color: #1b2733; letter-spacing: .6px; margin-top: 1px; }
+.qr-code-text {
+  margin-top: 14px; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-weight: 700; letter-spacing: 1px; font-size: 15px;
+}
+.qr-caption { margin-top: 6px; font-size: 12px; color: #6b7684; line-height: 1.4; }

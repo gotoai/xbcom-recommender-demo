@@ -19,6 +19,25 @@
   // --- user detail overlay ---
   const overlay = document.getElementById("user-overlay");
   const content = document.getElementById("user-content");
+  // --- coupon detail overlay (layers above the user/reco overlay) ---
+  const couponOverlay = document.getElementById("coupon-overlay");
+  const couponContent = document.getElementById("coupon-content");
+
+  // --- favorites (persisted per-traveler in this browser via localStorage) ---
+  // The browser is the source of truth; the server is told the current favorites on
+  // each list request (to render the hearts and to filter "My favorites").
+  const favKey = (userId) => `xb:favorites:${userId}`;
+  function getFavs(userId) {
+    try { return new Set(JSON.parse(localStorage.getItem(favKey(userId)) || "[]")); }
+    catch { return new Set(); }
+  }
+  function toggleFav(userId, couponId) {
+    const s = getFavs(userId);
+    if (s.has(couponId)) s.delete(couponId); else s.add(couponId);
+    try { localStorage.setItem(favKey(userId), JSON.stringify([...s])); } catch { /* quota/denied */ }
+    return s.has(couponId);
+  }
+  const favCsv = (userId) => [...getFavs(userId)].join(",");
 
   const open = (ov) => { ov.hidden = false; requestAnimationFrame(() => ov.classList.add("open")); };
   const close = (ov) => {
@@ -102,7 +121,10 @@
 
   async function openUser(id) {
     open(overlay);
-    await fetchInto(content, `/ui/user/${encodeURIComponent(id)}`);
+    const params = new URLSearchParams();
+    const csv = favCsv(id);
+    if (csv) params.set("favorites", csv);
+    await fetchInto(content, `/ui/user/${encodeURIComponent(id)}?${params.toString()}`);
     initRecoMap();
   }
 
@@ -113,23 +135,59 @@
     params.set("lang", lang);
     if (filters.category) params.set("category", filters.category);
     if (filters.subcategory) params.set("subcategory", filters.subcategory);
+    const csv = favCsv(userId);
+    if (csv) params.set("favorites", csv);
+    if (filters.favOnly) params.set("fav_only", "1");
     params.set("page", page);
     await fetchInto(content, `/ui/user/${encodeURIComponent(userId)}?${params.toString()}`);
     initRecoMap();
   }
 
-  // Current category / subcategory filter selection (read from the live selects,
-  // which the fragment re-renders with their selected state on every swap).
+  // Current category / subcategory / favorites-only filter selection (read from the
+  // live controls, which the fragment re-renders with their state on every swap).
   function currentFilters() {
     const cat = document.querySelector('.cf-select[data-filter="category"]');
     const sub = document.querySelector('.cf-select[data-filter="subcategory"]');
-    return { category: cat ? cat.value : "", subcategory: sub ? sub.value : "" };
+    const fav = document.querySelector('[data-filter="favorites"]');
+    return {
+      category: cat ? cat.value : "",
+      subcategory: sub ? sub.value : "",
+      favOnly: !!(fav && fav.checked),
+    };
   }
   // Current UI language (the language switcher's value).
   function currentLang() {
     const sel = document.querySelector(".lang-select");
     return sel ? sel.value : "";
   }
+  // The reco screen's current language (scoped, so it's read even while the coupon
+  // overlay holds its own language switcher).
+  function recoLang() {
+    const sel = document.querySelector("#user-content .lang-select");
+    return sel ? sel.value : "";
+  }
+
+  // --- coupon detail overlay ---
+  async function openCoupon(userId, couponId) {
+    open(couponOverlay);
+    const params = new URLSearchParams();
+    if (recoLang()) params.set("lang", recoLang());
+    const csv = favCsv(userId);
+    if (csv) params.set("favorites", csv);
+    await fetchInto(couponContent, `/ui/user/${encodeURIComponent(userId)}/coupon/${encodeURIComponent(couponId)}?${params.toString()}`);
+  }
+  // Re-render the coupon detail in another language (from its own switcher).
+  async function reloadCoupon(userId, couponId, lang) {
+    const params = new URLSearchParams();
+    params.set("lang", lang);
+    const csv = favCsv(userId);
+    if (csv) params.set("favorites", csv);
+    await fetchInto(couponContent, `/ui/user/${encodeURIComponent(userId)}/coupon/${encodeURIComponent(couponId)}?${params.toString()}`);
+  }
+  // Redeem QR popup (pre-rendered hidden inside the coupon detail fragment).
+  function qrModal() { return couponContent.querySelector("#qr-modal"); }
+  function openQr() { const m = qrModal(); if (m) m.hidden = false; }
+  function closeQr() { const m = qrModal(); if (m) m.hidden = true; }
 
   // Swap the coupon-list panel — a given page with the given filters applied — and
   // re-draw the map pins from the fragment's markers, so the map tracks the filter.
@@ -141,6 +199,9 @@
     if (filters.category) params.set("category", filters.category);
     if (filters.subcategory) params.set("subcategory", filters.subcategory);
     if (currentLang()) params.set("lang", currentLang());
+    const csv = favCsv(userId);
+    if (csv) params.set("favorites", csv);
+    if (filters.favOnly) params.set("fav_only", "1");
     params.set("page", page);
     try {
       const r = await fetch(`/ui/user/${encodeURIComponent(userId)}/coupons?${params.toString()}`);
@@ -151,21 +212,59 @@
     if (panel) panel.scrollTop = 0;
   }
 
-  // Delegated clicks: open a user card, page the coupon list, or close the screen.
+  // Delegated clicks: open a user/coupon card, page the coupon list, redeem, or close.
   document.addEventListener("click", (e) => {
+    // QR popup: close on the × button or a tap on the dim backdrop.
+    if (e.target.closest("#qr-close") || e.target.classList.contains("qr-modal")) { closeQr(); return; }
+    if (e.target.closest(".cd-use-btn")) { openQr(); return; }
+    if (e.target.closest("#coupon-back")) { close(couponOverlay); return; }
     if (e.target.closest("#user-back")) { destroyRecoMap(); close(overlay); return; }
+    // Favorite heart — toggle localStorage + icon; works from the list card or the
+    // detail header, and never opens the card detail.
+    const favBtn = e.target.closest(".cpn-fav[data-coupon-id]");
+    if (favBtn) {
+      const ctx = favBtn.closest("[data-user-id]");  // reco-list or coupon-detail
+      if (!ctx) return;
+      const userId = ctx.dataset.userId;
+      const cid = favBtn.dataset.couponId;
+      const nowFav = toggleFav(userId, cid);
+      // Sync every heart for this coupon (list card + detail header stay in step).
+      document.querySelectorAll(`.cpn-fav[data-coupon-id="${cid}"]`).forEach((b) => {
+        b.classList.toggle("is-fav", nowFav);
+        b.setAttribute("aria-pressed", nowFav ? "true" : "false");
+      });
+      // In "My favorites" view, un-favoriting removes the item — reload the list.
+      const favChk = document.querySelector('[data-filter="favorites"]');
+      const list = document.getElementById("reco-list");
+      if (favChk && favChk.checked && !nowFav && list) {
+        loadCouponList(userId, list.dataset.page || 1, currentFilters());
+      }
+      return;
+    }
     const pageBtn = e.target.closest(".reco-pager [data-page]");
     if (pageBtn) {
       const list = document.getElementById("reco-list");
       if (list) loadCouponList(list.dataset.userId, pageBtn.dataset.page, currentFilters());
       return;
     }
+    const coupon = e.target.closest(".coupon-card[data-coupon-id]");
+    if (coupon) {
+      const list = document.getElementById("reco-list");
+      if (list) openCoupon(list.dataset.userId, coupon.dataset.couponId);
+      return;
+    }
     const card = e.target.closest(".user-card[data-user-id]");
     if (card) { openUser(card.dataset.userId); return; }
   });
 
-  // Delegated change: category/subcategory filters, or the language switcher.
+  // Delegated change: category/subcategory filters, or a language switcher.
   document.addEventListener("change", (e) => {
+    // Coupon detail's own switcher — checked first (it also carries .lang-select).
+    const cLangSel = e.target.closest(".coupon-lang-select");
+    if (cLangSel) {
+      reloadCoupon(cLangSel.dataset.userId, cLangSel.dataset.couponId, cLangSel.value);
+      return;
+    }
     const langSel = e.target.closest(".lang-select");
     if (langSel) {
       const list = document.getElementById("reco-list");
@@ -173,21 +272,28 @@
       reloadReco(langSel.dataset.userId, langSel.value, currentFilters(), page);
       return;
     }
-    const sel = e.target.closest(".cf-select[data-filter]");
-    if (!sel) return;
+    // Coupon-list filters: category / subcategory selects or the "My favorites" checkbox.
+    const filterEl = e.target.closest("[data-filter]");
+    if (!filterEl) return;
     const list = document.getElementById("reco-list");
     if (!list) return;
     // Changing the category resets the subcategory (its options depend on it).
     const filters = currentFilters();
-    if (sel.dataset.filter === "category") filters.subcategory = "";
+    if (filterEl.dataset.filter === "category") filters.subcategory = "";
     loadCouponList(list.dataset.userId, 1, filters);
   });
 
-  // Keyboard: Enter/Space activates a focused card; Esc closes the overlay.
+  // Keyboard: Enter/Space activates a focused card; Esc closes the top-most overlay.
   document.addEventListener("keydown", (e) => {
-    if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-user-id]")) {
+    if ((e.key === "Enter" || e.key === " ") &&
+        e.target.matches(".user-card[data-user-id], .coupon-card[data-coupon-id]")) {
       e.preventDefault(); e.target.click();
     }
-    if (e.key === "Escape" && !overlay.hidden) { destroyRecoMap(); close(overlay); }
+    if (e.key === "Escape") {
+      const qm = qrModal();
+      if (qm && !qm.hidden) { closeQr(); }
+      else if (!couponOverlay.hidden) { close(couponOverlay); }
+      else if (!overlay.hidden) { destroyRecoMap(); close(overlay); }
+    }
   });
 })();

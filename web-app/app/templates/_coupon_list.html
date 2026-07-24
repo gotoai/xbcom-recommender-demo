@@ -36,6 +36,13 @@
         {% endfor %}
       </select>
     </label>
+    <label class="cf-check">
+      <input type="checkbox" data-filter="favorites" {% if favorites_only %}checked{% endif %}>
+      <svg class="cf-check-heart" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true">
+        <path d="M12 21s-7.5-4.6-10-9.2C.6 9 1.5 5.5 4.5 4.6 6.7 4 8.7 5 12 8c3.3-3 5.3-4 7.5-3.4 3 .9 3.9 4.4 2.5 7.2C19.5 16.4 12 21 12 21z"/>
+      </svg>
+      <span>{{ t.my_favorites }}</span>
+    </label>
   </div>
 </div>
 
@@ -43,7 +50,14 @@
 {% if coupons %}
 <ul class="card-list coupon-list">
   {% for c in coupons %}
-  <li class="card coupon-card" data-coupon-id="{{ c.coupon_id }}">
+  <li class="card coupon-card" data-coupon-id="{{ c.coupon_id }}" role="button" tabindex="0">
+    <button type="button" class="cpn-fav {% if c.is_favorite %}is-fav{% endif %}"
+            data-coupon-id="{{ c.coupon_id }}" aria-label="{{ t.favorite }}"
+            aria-pressed="{% if c.is_favorite %}true{% else %}false{% endif %}">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path d="M12 21s-7.5-4.6-10-9.2C.6 9 1.5 5.5 4.5 4.6 6.7 4 8.7 5 12 8c3.3-3 5.3-4 7.5-3.4 3 .9 3.9 4.4 2.5 7.2C19.5 16.4 12 21 12 21z"/>
+      </svg>
+    </button>
     <span class="cpn-thumb">
       <img src="/assets/images/{{ c.image | urlencode }}" alt=""
            loading="lazy"

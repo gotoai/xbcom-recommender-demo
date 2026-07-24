@@ -9,3 +9,4 @@ jinja2                   # server-rendered HTML
 python-dotenv            # load web-app/.env
 httpx                    # test client (Starlette TestClient dependency)
 pytest                   # data-layer + endpoint smoke tests
+segno                    # pure-Python QR codes (coupon-redeem QR), no deps, offline

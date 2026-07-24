@@ -10,8 +10,11 @@ aligned to the current JST week (see data.py / dates.py).
 """
 from __future__ import annotations
 
+import io
+
+import segno
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -23,7 +26,7 @@ app = FastAPI(title="XB.com recommender web-app", version="0.1.0")
 
 templates = Jinja2Templates(directory=str(config.BASE_DIR / "app" / "templates"))
 app.mount("/static", StaticFiles(directory=str(config.BASE_DIR / "app" / "static")), name="static")
-# Shop category thumbnails live in the repo's assets/images (served read-only). If
+# Subcategory coupon images live in the repo's assets/images (served read-only). If
 # the folder is absent the app still runs; the templates fall back to an emoji.
 _assets = config.REPO_ROOT / "assets"
 if _assets.is_dir():
@@ -72,8 +75,17 @@ def _reco_or_404(traveler_id: int) -> dict | None:
     return data.build_reco(d, traveler_id, dates.jst_now())
 
 
+def _parse_fav_ids(favorites: str | None) -> set[str]:
+    """The client (localStorage) sends its favorite coupon ids as a CSV; parse to a
+    set. The browser is the source of truth — the server keeps no favorites state."""
+    if not favorites:
+        return set()
+    return {part for part in (p.strip() for p in favorites.split(",")) if part}
+
+
 def _coupon_list_ctx(reco: dict, category: str | None, subcategory: str | None,
-                     page: int, lang: str, t: dict) -> dict:
+                     page: int, lang: str, t: dict, fav_ids: set[str],
+                     favorites_only: bool = False) -> dict:
     """Context for the swap-in coupon-list fragment: the category/subcategory filter
     facets, the filtered + paginated coupons, and the current selection — plus the
     map markers for the *filtered* set, so the map stays in sync with the list.
@@ -83,6 +95,10 @@ def _coupon_list_ctx(reco: dict, category: str | None, subcategory: str | None,
     **labels** — and the category on each coupon card — are translated to ``lang``.
     The subcategory dropdown depends on the chosen category; a stale subcategory (one
     not offered under the selected category) is dropped rather than empty-filtering.
+
+    ``fav_ids`` are the coupon ids the browser has favorited (from localStorage);
+    each card is marked ``is_favorite`` so the heart renders solid/hollow, and
+    ``favorites_only`` narrows the list to them (ANDed with category/subcategory).
     """
     all_coupons = reco["coupons"]
     category = category or None
@@ -94,9 +110,12 @@ def _coupon_list_ctx(reco: dict, category: str | None, subcategory: str | None,
     if subcategory not in sub_values:
         subcategory = None
     filtered = data.filter_coupons(all_coupons, category, subcategory)
+    if favorites_only:
+        filtered = [c for c in filtered if str(c["coupon_id"]) in fav_ids]
     page_items, page, total_pages = data.paginate(filtered, page, COUPON_PAGE_SIZE)
     for c in page_items:
         c["category_label"] = labels.category_label(lang, c["category_en"])
+        c["is_favorite"] = str(c["coupon_id"]) in fav_ids
     return {
         "u": reco["user"],
         "coupons": page_items,
@@ -110,6 +129,7 @@ def _coupon_list_ctx(reco: dict, category: str | None, subcategory: str | None,
                         for s in sub_values],
         "sel_category": category or "",
         "sel_subcategory": subcategory or "",
+        "favorites_only": favorites_only,
         "markers": data.reco_map_markers(filtered),
         "marker_cap": data.MAP_MARKER_CAP,
         "lang": lang,
@@ -121,7 +141,9 @@ def _coupon_list_ctx(reco: dict, category: str | None, subcategory: str | None,
 async def ui_user_reco(request: Request, traveler_id: int, page: int = 1,
                        category: str | None = None,
                        subcategory: str | None = None,
-                       lang: str | None = None) -> HTMLResponse:
+                       lang: str | None = None,
+                       favorites: str | None = None,
+                       fav_only: bool = False) -> HTMLResponse:
     """The traveler's coupon-recommendation screen (user mode): a map centred on
     their current location, the active coupons within 5 km (filterable by category /
     subcategory, paginated), and a concierge-chat placeholder. Chrome is rendered in
@@ -132,7 +154,8 @@ async def ui_user_reco(request: Request, traveler_id: int, page: int = 1,
         return HTMLResponse("<p class='error'>Unknown user.</p>", status_code=404)
     lang = i18n.resolve_lang(lang, reco["user"]["lang"])
     t = i18n.translations(lang)
-    ctx = _coupon_list_ctx(reco, category, subcategory, page, lang, t)
+    ctx = _coupon_list_ctx(reco, category, subcategory, page, lang, t,
+                           _parse_fav_ids(favorites), fav_only)
     ctx.update({
         "loc": reco["location"],
         "radius_km": reco["radius_km"],
@@ -147,7 +170,9 @@ async def ui_user_reco(request: Request, traveler_id: int, page: int = 1,
 async def ui_user_coupons(request: Request, traveler_id: int, page: int = 1,
                           category: str | None = None,
                           subcategory: str | None = None,
-                          lang: str | None = None) -> HTMLResponse:
+                          lang: str | None = None,
+                          favorites: str | None = None,
+                          fav_only: bool = False) -> HTMLResponse:
     """Just the coupon-list panel (filter bar + list + pager, plus the filtered map
     markers) — swapped in place by the reco screen's filters and pager without
     reloading the map."""
@@ -158,7 +183,47 @@ async def ui_user_coupons(request: Request, traveler_id: int, page: int = 1,
     t = i18n.translations(lang)
     return templates.TemplateResponse(
         request, "_coupon_list.html",
-        _coupon_list_ctx(reco, category, subcategory, page, lang, t))
+        _coupon_list_ctx(reco, category, subcategory, page, lang, t,
+                         _parse_fav_ids(favorites), fav_only))
+
+
+@app.get("/ui/user/{traveler_id}/coupon/{coupon_id}", response_class=HTMLResponse)
+async def ui_coupon_detail(request: Request, traveler_id: int, coupon_id: str,
+                           lang: str | None = None,
+                           favorites: str | None = None) -> HTMLResponse:
+    """The coupon detail screen for one coupon in the traveler's reco set: a hero
+    image with a redeem CTA, the product / coupon conditions, and an agent
+    placeholder. Rendered in the traveler's language (``lang`` overrides). The coupon
+    is resolved from the traveler's own reco list so it carries ``distance_km``."""
+    reco = _reco_or_404(traveler_id)
+    if reco is None:
+        return HTMLResponse("<p class='error'>Unknown user.</p>", status_code=404)
+    coupon = next((c for c in reco["coupons"]
+                   if str(c["coupon_id"]) == str(coupon_id)), None)
+    if coupon is None:
+        return HTMLResponse("<p class='error'>Unknown coupon.</p>", status_code=404)
+    lang = i18n.resolve_lang(lang, reco["user"]["lang"])
+    t = i18n.translations(lang)
+    coupon = dict(coupon)
+    coupon["category_label"] = labels.category_label(lang, coupon["category_en"])
+    coupon["subcategory_label"] = labels.subcategory_label(lang, coupon["subcategory_en"])
+    coupon["is_favorite"] = str(coupon["coupon_id"]) in _parse_fav_ids(favorites)
+    return templates.TemplateResponse(request, "_coupon_detail.html", {
+        "u": reco["user"], "c": coupon, "t": t, "lang": lang,
+        "dir": i18n.direction(lang), "language_options": i18n.LANGUAGE_OPTIONS,
+    })
+
+
+@app.get("/api/coupon-qr/{code}")
+async def coupon_qr(code: str) -> Response:
+    """A 2D QR code (SVG) encoding the coupon code, shown in the redeem popup. Error
+    correction level H (~30%) so the centred "XB eSIM" logo overlaid by the UI does
+    not stop it from scanning. Pure-Python (segno) — no network or PIL needed."""
+    qr = segno.make(code, error="h")
+    buf = io.BytesIO()
+    qr.save(buf, kind="svg", scale=10, border=2, dark="#1b2733", light="#ffffff")
+    return Response(content=buf.getvalue(), media_type="image/svg+xml",
+                    headers={"Cache-Control": "public, max-age=86400"})
 
 
 @app.get("/api/users")

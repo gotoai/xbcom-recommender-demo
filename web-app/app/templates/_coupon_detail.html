@@ -1,0 +1,84 @@
+{# Coupon detail screen: three stacked panels (image 40% / details 30% / agent 30%).
+   Fetched into #coupon-content by app.js when a coupon card is tapped. Chrome is
+   localised via `t`; the coupon data stays English (taxonomy labels excepted). #}
+<div class="coupon-detail" data-user-id="{{ u.id }}" data-coupon-id="{{ c.coupon_id }}"
+     lang="{{ lang }}" dir="{{ dir }}">
+  <div class="detail-bar">
+    <button type="button" class="back-btn" id="coupon-back">‹ {{ t.back }}</button>
+    <span class="detail-bar-title">{{ c.emoji }} {{ c.product_name_en }}</span>
+    {# Language switcher: overrides the traveler's default UI language for this view. #}
+    <label class="reco-lang" aria-label="{{ t.language }}">
+      <svg class="reco-lang-icon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        <ellipse cx="12" cy="12" rx="4" ry="9" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M3.2 9h17.6M3.2 15h17.6" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      </svg>
+      <select class="lang-select coupon-lang-select" data-user-id="{{ u.id }}" data-coupon-id="{{ c.coupon_id }}">
+        {% for code, name in language_options %}
+        <option value="{{ code }}" {% if lang == code %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+
+  {# --- Panel 1 (40%): hero image with guidance overlay + redeem CTA --- #}
+  <section class="cd-image-panel">
+    <img class="cd-image" src="/assets/images/{{ c.image | urlencode }}" alt=""
+         onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'cd-image-fallback',textContent:'{{ c.emoji }}'}))">
+    <div class="cd-guidance">{{ t.coupon_guidance }}</div>
+    <button type="button" class="cd-use-btn" id="cd-use">{{ t.use_this_coupon }}</button>
+  </section>
+
+  {# --- Panel 2 (30%): product + coupon conditions --- #}
+  <section class="cd-details-panel">
+    <div class="cd-details-head">
+      <div class="cd-product-name">{{ c.product_name_en }}</div>
+      <button type="button" class="cpn-fav cd-fav {% if c.is_favorite %}is-fav{% endif %}"
+              data-coupon-id="{{ c.coupon_id }}" aria-label="{{ t.favorite }}"
+              aria-pressed="{% if c.is_favorite %}true{% else %}false{% endif %}">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M12 21s-7.5-4.6-10-9.2C.6 9 1.5 5.5 4.5 4.6 6.7 4 8.7 5 12 8c3.3-3 5.3-4 7.5-3.4 3 .9 3.9 4.4 2.5 7.2C19.5 16.4 12 21 12 21z"/>
+        </svg>
+      </button>
+    </div>
+    <div class="cd-shop">{{ c.emoji }} {{ c.shop_name_en }} · {{ c.category_label }} › {{ c.subcategory_label }}</div>
+    {% if c.product_description_en %}
+    <p class="cd-desc">{{ c.product_description_en }}</p>
+    {% endif %}
+    <dl class="cd-conditions">
+      <div><dt>{{ t.discount }}</dt><dd class="cd-discount">{{ c.discount_label }}</dd></div>
+      <div><dt>{{ t.price }}</dt><dd>¥{{ "{:,}".format(c.price) }}</dd></div>
+      <div><dt>{{ t.valid_period }}</dt><dd>{{ c.coupon_start_date }} – {{ c.coupon_end_date }}</dd></div>
+      <div><dt>{{ t.coupon_code }}</dt><dd class="cd-code">{{ c.coupon_code }}</dd></div>
+      <div><dt>{{ t.distance }}</dt><dd>📍 {{ "%.1f"|format(c.distance_km) }} km</dd></div>
+    </dl>
+  </section>
+
+  {# --- Panel 3 (30%): agent placeholder (backend later) --- #}
+  <section class="cd-agent-panel">
+    <div class="reco-chat-head">🤖 {{ t.concierge }}<span class="soon">{{ t.coming_soon }}</span></div>
+    <div class="reco-chat-body">
+      <div class="msg assistant muted">{{ t.chat_hint }}</div>
+    </div>
+    <form class="reco-chat-input" onsubmit="return false;">
+      <input type="text" placeholder="{{ t.chat_placeholder }}" disabled>
+      <button type="submit" disabled>{{ t.send }}</button>
+    </form>
+  </section>
+
+  {# Redeem popup: a 2D QR of the coupon code with the XB eSIM logo centred. Hidden
+     until "Use This Coupon" is tapped (toggled by app.js). #}
+  <div class="qr-modal" id="qr-modal" hidden>
+    <div class="qr-sheet" role="dialog" aria-modal="true" aria-label="{{ t.use_this_coupon }}">
+      <button type="button" class="qr-close" id="qr-close" aria-label="{{ t.close }}">×</button>
+      <div class="qr-title">{{ t.use_this_coupon }}</div>
+      <div class="qr-frame">
+        <img class="qr-img" src="/api/coupon-qr/{{ c.coupon_code | urlencode }}"
+             alt="{{ t.coupon_code }}: {{ c.coupon_code }}" width="240" height="240">
+        <span class="qr-logo" aria-hidden="true"><b>XB</b><span>eSIM</span></span>
+      </div>
+      <div class="qr-code-text">{{ c.coupon_code }}</div>
+      <div class="qr-caption">{{ t.coupon_guidance }}</div>
+    </div>
+  </div>
+</div>

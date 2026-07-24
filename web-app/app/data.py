@@ -24,6 +24,7 @@ from __future__ import annotations
 import csv
 import math
 import random
+import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -137,6 +138,17 @@ def category_emoji(category: str) -> str:
     return CATEGORY_EMOJI.get(category, "🎟️")
 
 
+def _slug(text: str) -> str:
+    """Match the image generator's slug: lowercase, non-alnum runs -> '_'."""
+    return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_") or "item"
+
+
+def subcategory_image_name(category_en: str, subcategory_en: str) -> str:
+    """Filename of the generated subcategory hero image (see Auxiliary generator).
+    Category is included because one subcategory name spans two categories."""
+    return f"{_slug(category_en)}__{_slug(subcategory_en)}.png"
+
+
 def discount_label(display: str, amount: float, rate: float) -> str:
     """Human coupon-discount label (English user view): rate -> 'NN% OFF',
     amount -> '¥NNN OFF'."""
@@ -229,9 +241,11 @@ def _load_shops() -> dict[str, dict]:
     return shops
 
 
-def _load_product_names_en() -> dict[str, str]:
-    """product_id -> English product name (from product.tsv), for the English view."""
-    return {row["product_id"]: row["product_name_en"]
+def _load_products_en() -> dict[str, dict[str, str]]:
+    """product_id -> {name, description} in English (from product.tsv), for the
+    user-mode views (the coupon list uses the name; the detail view the description)."""
+    return {row["product_id"]: {"name": row["product_name_en"],
+                                "description": row.get("description_en", "") or ""}
             for row in _read_tsv(config.PRODUCT_TSV)}
 
 
@@ -241,7 +255,7 @@ def _load_coupons(today: date, shops: dict[str, dict]) -> list[dict]:
     labels (product name / category) for the user-mode view."""
     from datetime import timedelta
 
-    product_en = _load_product_names_en()
+    product_en = _load_products_en()
     out: list[dict] = []
     for row in _read_tsv(config.COUPON_TSV):
         start_wd = int(row["coupon_start_weekday"])
@@ -262,14 +276,16 @@ def _load_coupons(today: date, shops: dict[str, dict]) -> list[dict]:
             float(row["coupon_discount_rate"]),
         )
         c["shop_name_en"] = shop.get("shop_name_en", "") or row["shop_name"]
-        c["product_name_en"] = product_en.get(row["product_id"], "") or row["product_name"]
+        prod = product_en.get(row["product_id"]) or {}
+        c["product_name_en"] = prod.get("name") or row["product_name"]
+        c["product_description_en"] = prod.get("description", "")
         c["category_en"] = row.get("category_en") or category_en(row["category"])
         c["subcategory_en"] = row.get("subcategory_en", "") or row.get("subcategory", "")
         c["address"] = shop.get("address", "")
         c["latitude"] = shop.get("latitude")
         c["longitude"] = shop.get("longitude")
         c["emoji"] = category_emoji(row["category"])
-        c["image"] = f"{row['category']}_{row['subcategory']}.png"
+        c["image"] = subcategory_image_name(c["category_en"], c["subcategory_en"])
         out.append(c)
     return out
 
