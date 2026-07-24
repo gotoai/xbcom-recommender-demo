@@ -519,6 +519,16 @@ _FAVORITES_STRINGS: dict[str, dict[str, str]] = {
 for _lang, _strings in _FAVORITES_STRINGS.items():
     TRANSLATIONS.setdefault(_lang, {}).update(_strings)
 
+# "Off" — the yen-amount saved (detail conditions row). English back-fills any gap.
+_OFF = {
+    "en": "Off", "ko": "할인액", "zh-Hans": "立减", "zh-Hant": "立減", "th": "ประหยัด",
+    "vi": "Giảm", "fil": "Tipid", "hi": "बचत", "es": "Ahorro", "pt": "Economia",
+    "fr": "Économie", "de": "Ersparnis", "it": "Risparmio", "nl": "Besparing",
+    "he": "חיסכון", "tr": "Tasarruf",
+}
+for _lang, _word in _OFF.items():
+    TRANSLATIONS.setdefault(_lang, {})["off"] = _word
+
 # Language dropdown: (code, endonym) in menu order. Codes must be TRANSLATIONS keys.
 LANGUAGE_OPTIONS: list[tuple[str, str]] = [
     ("en", "English"), ("ko", "한국어"), ("zh-Hans", "简体中文"),

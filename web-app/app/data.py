@@ -157,6 +157,14 @@ def discount_label(display: str, amount: float, rate: float) -> str:
     return f"¥{int(round(amount)):,} OFF"
 
 
+def discount_off_yen(display: str, amount: float, rate: float, price: int) -> int:
+    """Yen off the standard price: standard price × rate (rounded) for a rate coupon,
+    else the flat yen off for an amount coupon."""
+    if display == "rate":
+        return round(price * rate)
+    return int(round(amount))
+
+
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Great-circle distance in kilometres between two lat/lon points."""
     r = 6371.0088
@@ -274,6 +282,12 @@ def _load_coupons(today: date, shops: dict[str, dict]) -> list[dict]:
             row["coupon_discount_display"],
             float(row["coupon_discount_amount"]),
             float(row["coupon_discount_rate"]),
+        )
+        c["discount_off"] = discount_off_yen(
+            row["coupon_discount_display"],
+            float(row["coupon_discount_amount"]),
+            float(row["coupon_discount_rate"]),
+            c["price"],
         )
         c["shop_name_en"] = shop.get("shop_name_en", "") or row["shop_name"]
         prod = product_en.get(row["product_id"]) or {}

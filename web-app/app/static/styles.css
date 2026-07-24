@@ -174,7 +174,10 @@ body {
 
 /* ============ User-mode reco screen (3 stacked panels) ============ */
 .reco { display: flex; flex-direction: column; height: 100%; min-height: 0; }
-.reco .detail-bar { flex: 0 0 auto; }
+/* Slimmer title bar (~-30% height): reduced padding + slightly smaller controls. */
+.reco .detail-bar { flex: 0 0 auto; padding-top: 6px; padding-bottom: 6px; }
+.reco .back-btn { padding: 4px 11px; font-size: 13px; }
+.reco .reco-lang { padding: 2px 8px; }
 .reco .detail-bar-title { font-size: 14px; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Language switcher — sits in the title bar, right of the traveler name */
@@ -191,8 +194,8 @@ body {
 /* The option list renders in the OS menu, not on the brand bar — keep it readable. */
 .lang-select option { color: var(--ink); background: var(--card); }
 
-/* Panel 1: map */
-.reco-map-panel { flex: 0 0 40%; display: flex; flex-direction: column; min-height: 0; position: relative; }
+/* Panel 1: map (height reduced ~-20%: 40% -> 32%) */
+.reco-map-panel { flex: 0 0 32%; display: flex; flex-direction: column; min-height: 0; position: relative; }
 .reco-map { flex: 1 1 auto; min-height: 0; background: var(--line); z-index: 0; }
 
 .reco-map-caption {
@@ -276,35 +279,42 @@ body {
 .cpn-emoji { font-size: 26px; }
 .coupon-card .card-title { font-size: 14px; }
 .coupon-card .card-meta { font-size: 12px; }
-.discount-chip { background: rgba(232,89,12,.14); color: var(--accent); }
+.discount-chip { background: var(--line); color: var(--muted); }
+.off-chip { background: rgba(232,89,12,.14); color: var(--accent); font-variant-numeric: tabular-nums; }
 .dist-chip { background: var(--line); color: var(--muted); }
 .price-line { display: flex; gap: 8px; align-items: baseline; margin-top: 3px; }
 .price-line .price { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
 .price-line .period { color: var(--muted); }
 
 /* Panel 3: chat placeholder */
+/* Panel 3: agent — enlarged (was content-height) with a scrollable multiline convo. */
 .reco-chat-panel {
-  flex: 0 0 auto; border-top: 1px solid var(--line); background: var(--card);
+  flex: 0 0 30%; min-height: 0; border-top: 1px solid var(--line); background: var(--card);
   display: flex; flex-direction: column;
 }
+.reco-chat-panel .reco-chat-body { flex: 1 1 auto; overflow-y: auto; }
 .reco-chat-head {
   font-size: 12px; font-weight: 700; color: var(--muted);
   padding: 8px 12px 6px; display: flex; align-items: center; gap: 8px;
 }
-.reco-chat-head .soon {
-  font-size: 10px; font-weight: 700; color: var(--brand);
-  background: rgba(10,108,255,.12); border-radius: 999px; padding: 1px 7px;
-}
+.reco-chat-head .ai-badge { height: 21px; width: auto; display: block; }
 .reco-chat-body { padding: 0 12px 8px; }
 .reco-chat-body .msg { max-width: 90%; padding: 8px 12px; border-radius: 12px; font-size: 12px; }
 .reco-chat-body .msg.muted { color: var(--muted); font-style: italic; background: var(--bg); border: 1px solid var(--line); }
 .reco-chat-input {
-  display: flex; gap: 8px; padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+  display: flex; gap: 8px; align-items: flex-end;
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--line);
 }
 .reco-chat-input input {
   flex: 1; border: 1px solid var(--line); border-radius: 999px; padding: 9px 14px;
   font-size: 14px; background: var(--bg); color: var(--muted);
+}
+/* Multiline composer for the reco-screen agent panel. */
+.reco-chat-input textarea {
+  flex: 1; border: 1px solid var(--line); border-radius: 14px; padding: 8px 14px;
+  font-size: 14px; font-family: inherit; line-height: 1.4; background: var(--bg);
+  color: var(--muted); resize: none; min-height: 44px; max-height: 96px;
 }
 .reco-chat-input button {
   border: 0; background: var(--line); color: var(--muted); border-radius: 999px;

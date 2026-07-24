@@ -46,8 +46,9 @@
     <p class="cd-desc">{{ c.product_description_en }}</p>
     {% endif %}
     <dl class="cd-conditions">
-      <div><dt>{{ t.discount }}</dt><dd class="cd-discount">{{ c.discount_label }}</dd></div>
+      <div><dt>{{ t.discount }}</dt><dd>{{ c.discount_label }}</dd></div>
       <div><dt>{{ t.price }}</dt><dd>¥{{ "{:,}".format(c.price) }}</dd></div>
+      <div><dt>{{ t.off }}</dt><dd class="cd-discount">-¥{{ "{:,}".format(c.discount_off) }}</dd></div>
       <div><dt>{{ t.valid_period }}</dt><dd>{{ c.coupon_start_date }} – {{ c.coupon_end_date }}</dd></div>
       <div><dt>{{ t.coupon_code }}</dt><dd class="cd-code">{{ c.coupon_code }}</dd></div>
       <div><dt>{{ t.distance }}</dt><dd>📍 {{ "%.1f"|format(c.distance_km) }} km</dd></div>
@@ -56,7 +57,7 @@
 
   {# --- Panel 3 (30%): agent placeholder (backend later) --- #}
   <section class="cd-agent-panel">
-    <div class="reco-chat-head">🤖 {{ t.concierge }}<span class="soon">{{ t.coming_soon }}</span></div>
+    <div class="reco-chat-head"><img class="ai-badge" src="/assets/icons/ai-300x200.svg" alt="{{ t.concierge }}"></div>
     <div class="reco-chat-body">
       <div class="msg assistant muted">{{ t.chat_hint }}</div>
     </div>

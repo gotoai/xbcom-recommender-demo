@@ -19,8 +19,7 @@
   </div>
   <div class="coupon-filters">
     <label class="cf-field">
-      <span class="cf-label">{{ t.category }}</span>
-      <select class="cf-select" data-filter="category">
+      <select class="cf-select" data-filter="category" aria-label="{{ t.category }}">
         <option value="">{{ t.all }}</option>
         {% for cat in categories %}
         <option value="{{ cat.value }}" {% if sel_category == cat.value %}selected{% endif %}>{{ cat.label }}</option>
@@ -28,8 +27,7 @@
       </select>
     </label>
     <label class="cf-field">
-      <span class="cf-label">{{ t.subcategory }}</span>
-      <select class="cf-select" data-filter="subcategory" {% if not sub_options %}disabled{% endif %}>
+      <select class="cf-select" data-filter="subcategory" aria-label="{{ t.subcategory }}" {% if not sub_options %}disabled{% endif %}>
         <option value="">{{ t.all }}</option>
         {% for sub in sub_options %}
         <option value="{{ sub.value }}" {% if sel_subcategory == sub.value %}selected{% endif %}>{{ sub.label }}</option>
@@ -67,6 +65,7 @@
       <div class="card-title">{{ c.product_name_en }}</div>
       <div class="card-tags">
         <span class="chip discount-chip">{{ c.discount_label }}</span>
+        <span class="chip off-chip">-¥{{ "{:,}".format(c.discount_off) }}</span>
         <span class="chip dist-chip">📍 {{ "%.1f"|format(c.distance_km) }} km</span>
       </div>
       <div class="card-meta">{{ c.emoji }} {{ c.shop_name_en }} · {{ c.category_label }}</div>

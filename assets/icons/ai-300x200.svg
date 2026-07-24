@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" viewBox="0 0 300 200" role="img" aria-label="AI">
+  <!-- Rounded rectangle background -->
+  <rect x="6" y="6" width="288" height="188" rx="30" ry="30" fill="#0a6cff"/>
+  <!-- Light-orange sparkle at the top-left, 10px below the top border -->
+  <path fill="#ffb347"
+        d="M54 16
+           C60 39 66 45 89 51
+           C66 57 60 63 54 86
+           C48 63 42 57 19 51
+           C42 45 48 39 54 16 Z"/>
+  <!-- 'AI' letters, centred -->
+  <text x="152" y="108" text-anchor="middle" dominant-baseline="central"
+        font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
+        font-size="177" font-weight="800" fill="#ffffff">AI</text>
+</svg>
