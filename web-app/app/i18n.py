@@ -75,6 +75,13 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "coming_soon": "Coming soon",
         "chat_hint": "Ask me anything about these coupons (coming soon).",
         "chat_placeholder": "Type a message… (coming soon)",
+        # Coupon-detail concierge chat (live). Other languages fall back to these
+        # English strings for now; per-language versions come later.
+        "cd_chat_hint": "Ask me anything about this coupon.",
+        "reco_chat_hint": "Ask me anything about these coupons.",
+        "cd_chat_placeholder": "Type a message…",
+        "thinking": "Thinking…",
+        "chat_error": "Sorry, something went wrong. Please try again.",
         "send": "Send",
         "prev": "Prev",
         "next": "Next",

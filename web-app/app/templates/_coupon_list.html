@@ -62,17 +62,17 @@
            onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'cpn-emoji',textContent:'{{ c.emoji }}'}))">
     </span>
     <div class="card-body">
-      <div class="card-title">{{ c.product_name_en }}</div>
+      <div class="card-title">
+        <span class="cpn-name">{{ c.product_name_en }}</span>
+        <span class="price">¥{{ "{:,}".format(c.price) }}</span>
+        <span class="chip off-chip">-¥{{ "{:,}".format(c.discount_off) }}</span>
+      </div>
       <div class="card-tags">
         <span class="chip discount-chip">{{ c.discount_label }}</span>
-        <span class="chip off-chip">-¥{{ "{:,}".format(c.discount_off) }}</span>
         <span class="chip dist-chip">📍 {{ "%.1f"|format(c.distance_km) }} km</span>
-      </div>
-      <div class="card-meta">{{ c.emoji }} {{ c.shop_name_en }} · {{ c.category_label }}</div>
-      <div class="card-meta price-line">
-        <span class="price">¥{{ "{:,}".format(c.price) }}</span>
         <span class="period">Until {{ c.coupon_end_date[5:] }}</span>
       </div>
+      <div class="card-meta">{{ c.emoji }} {{ c.shop_name_en }} · {{ c.category_label }}</div>
     </div>
   </li>
   {% endfor %}

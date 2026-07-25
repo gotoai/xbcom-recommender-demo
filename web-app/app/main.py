@@ -11,14 +11,19 @@ aligned to the current JST week (see data.py / dates.py).
 from __future__ import annotations
 
 import io
+import logging
 
 import segno
 from fastapi import FastAPI, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 
-from . import config, data, dates, i18n, labels
+from . import agent, config, data, dates, i18n, labels
+
+log = logging.getLogger(__name__)
 
 COUPON_PAGE_SIZE = 5  # coupons per page in the reco list panel
 
@@ -212,6 +217,47 @@ async def ui_coupon_detail(request: Request, traveler_id: int, coupon_id: str,
         "u": reco["user"], "c": coupon, "t": t, "lang": lang,
         "dir": i18n.direction(lang), "language_options": i18n.LANGUAGE_OPTIONS,
     })
+
+
+class ChatIn(BaseModel):
+    message: str
+
+
+@app.post("/ui/user/{traveler_id}/chat")
+async def reco_chat(traveler_id: int, body: ChatIn) -> JSONResponse:
+    """One turn of the reco-screen (coupon-list) concierge chat — the traveler asking
+    about their coupon set as a whole. Same naive relay as the coupon-detail chat, but
+    a **per-traveler** history thread (``reco:<id>``), kept separate from the
+    per-coupon threads."""
+    message = (body.message or "").strip()
+    if not message:
+        return JSONResponse({"error": "empty message"}, status_code=400)
+    session_key = f"reco:{traveler_id}"
+    try:
+        answer = await run_in_threadpool(agent.reply, session_key, message)
+    except Exception:  # noqa: BLE001 — surface a generic failure; the panel shows a retry hint
+        log.exception("reco-chat agent call failed (session=%s)", session_key)
+        return JSONResponse({"error": "agent unavailable"}, status_code=502)
+    return JSONResponse({"reply": answer})
+
+
+@app.post("/ui/user/{traveler_id}/coupon/{coupon_id}/chat")
+async def coupon_chat(traveler_id: int, coupon_id: str, body: ChatIn) -> JSONResponse:
+    """One turn of the coupon-detail concierge chat. Naive first cut: the user's text
+    is relayed to the data plane via ``agent.reply`` and the model's answer returned.
+    History is server-held, keyed per (traveler, coupon) — the browser sends only the
+    message. The blocking oumigo call runs in a threadpool so the event loop stays
+    free."""
+    message = (body.message or "").strip()
+    if not message:
+        return JSONResponse({"error": "empty message"}, status_code=400)
+    session_key = f"{traveler_id}:{coupon_id}"
+    try:
+        answer = await run_in_threadpool(agent.reply, session_key, message)
+    except Exception:  # noqa: BLE001 — surface a generic failure; the panel shows a retry hint
+        log.exception("coupon-chat agent call failed (session=%s)", session_key)
+        return JSONResponse({"error": "agent unavailable"}, status_code=502)
+    return JSONResponse({"reply": answer})
 
 
 @app.get("/api/coupon-qr/{code}")

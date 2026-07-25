@@ -48,15 +48,17 @@
     </div>
   </section>
 
-  {# --- Panel 3: concierge chat placeholder (backend later) --- #}
+  {# --- Panel 3: live concierge chat over the traveler's whole coupon set. app.js
+       posts each turn to /ui/user/<id>/chat (Ctrl+Enter or Send). #}
   <section class="reco-chat-panel">
     <div class="reco-chat-head"><img class="ai-badge" src="/assets/icons/ai-300x200.svg" alt="{{ t.concierge }}"></div>
     <div class="reco-chat-body">
-      <div class="msg assistant muted">{{ t.chat_hint }}</div>
+      <div class="msg assistant muted">{{ t.reco_chat_hint }}</div>
     </div>
-    <form class="reco-chat-input" onsubmit="return false;">
-      <textarea rows="2" placeholder="{{ t.chat_placeholder }}" disabled></textarea>
-      <button type="submit" disabled>{{ t.send }}</button>
+    <form class="reco-chat-input js-chat-form" data-endpoint="/ui/user/{{ u.id }}/chat"
+          data-thinking="{{ t.thinking }}" data-error="{{ t.chat_error }}">
+      <textarea class="js-chat-text" rows="2" placeholder="{{ t.cd_chat_placeholder }}"></textarea>
+      <button type="submit">{{ t.send }}</button>
     </form>
   </section>
 </div>

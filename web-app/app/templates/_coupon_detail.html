@@ -49,21 +49,24 @@
       <div><dt>{{ t.discount }}</dt><dd>{{ c.discount_label }}</dd></div>
       <div><dt>{{ t.price }}</dt><dd>¥{{ "{:,}".format(c.price) }}</dd></div>
       <div><dt>{{ t.off }}</dt><dd class="cd-discount">-¥{{ "{:,}".format(c.discount_off) }}</dd></div>
-      <div><dt>{{ t.valid_period }}</dt><dd>{{ c.coupon_start_date }} – {{ c.coupon_end_date }}</dd></div>
+      <div><dt>{{ t.valid_period }}</dt><dd>{{ c.coupon_start_date[5:] }} – {{ c.coupon_end_date[5:] }}</dd></div>
       <div><dt>{{ t.coupon_code }}</dt><dd class="cd-code">{{ c.coupon_code }}</dd></div>
       <div><dt>{{ t.distance }}</dt><dd>📍 {{ "%.1f"|format(c.distance_km) }} km</dd></div>
     </dl>
   </section>
 
-  {# --- Panel 3 (30%): agent placeholder (backend later) --- #}
+  {# --- Panel 3 (~44%): live concierge chat. app.js posts each turn to
+       /ui/user/<id>/coupon/<cid>/chat and appends the reply (Ctrl+Enter or Send). #}
   <section class="cd-agent-panel">
     <div class="reco-chat-head"><img class="ai-badge" src="/assets/icons/ai-300x200.svg" alt="{{ t.concierge }}"></div>
-    <div class="reco-chat-body">
-      <div class="msg assistant muted">{{ t.chat_hint }}</div>
+    <div class="reco-chat-body" id="cd-chat-body">
+      <div class="msg assistant muted">{{ t.cd_chat_hint }}</div>
     </div>
-    <form class="reco-chat-input" onsubmit="return false;">
-      <input type="text" placeholder="{{ t.chat_placeholder }}" disabled>
-      <button type="submit" disabled>{{ t.send }}</button>
+    <form class="reco-chat-input cd-chat-form js-chat-form"
+          data-endpoint="/ui/user/{{ u.id }}/coupon/{{ c.coupon_id }}/chat"
+          data-thinking="{{ t.thinking }}" data-error="{{ t.chat_error }}">
+      <textarea class="cd-chat-text js-chat-text" rows="2" placeholder="{{ t.cd_chat_placeholder }}"></textarea>
+      <button type="submit">{{ t.send }}</button>
     </form>
   </section>
 

@@ -184,6 +184,57 @@
     if (csv) params.set("favorites", csv);
     await fetchInto(couponContent, `/ui/user/${encodeURIComponent(userId)}/coupon/${encodeURIComponent(couponId)}?${params.toString()}`);
   }
+  // --- concierge chat (shared by the reco-list and coupon-detail panels) ---
+  // Append a message bubble to the chat body and keep it scrolled to the newest.
+  function appendMsg(body, cls, text) {
+    const div = document.createElement("div");
+    div.className = `msg ${cls}`;
+    div.textContent = text;
+    body.appendChild(div);
+    body.scrollTop = body.scrollHeight;
+    return div;
+  }
+
+  // Post one chat turn to the backend and render the reply. Naive: the server holds
+  // the history (keyed per traveler, or per traveler+coupon); the browser sends only
+  // the message text. Endpoint + strings come from the form's data-* attributes, so
+  // the same handler drives both the reco-list and coupon-detail chats.
+  async function sendChat(form) {
+    const input = form.querySelector(".js-chat-text");
+    const body = form.closest("section").querySelector(".reco-chat-body");
+    if (!input || !body) return;
+    const msg = input.value.trim();
+    if (!msg) return;
+    const btn = form.querySelector('button[type="submit"]');
+
+    input.value = "";
+    input.disabled = true;
+    if (btn) btn.disabled = true;
+    appendMsg(body, "user", msg);
+    const pending = appendMsg(body, "assistant muted", form.dataset.thinking || "…");
+
+    try {
+      const r = await fetch(form.dataset.endpoint,
+        { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: msg }) });
+      const data = r.ok ? await r.json() : null;
+      if (data && data.reply) {
+        pending.className = "msg assistant";
+        pending.textContent = data.reply;
+      } else {
+        pending.className = "msg assistant error-msg";
+        pending.textContent = form.dataset.error || "Something went wrong.";
+      }
+    } catch {
+      pending.className = "msg assistant error-msg";
+      pending.textContent = form.dataset.error || "A network error occurred.";
+    } finally {
+      input.disabled = false;
+      if (btn) btn.disabled = false;
+      input.focus();
+    }
+  }
+
   // Redeem QR popup (pre-rendered hidden inside the coupon detail fragment).
   function qrModal() { return couponContent.querySelector("#qr-modal"); }
   function openQr() { const m = qrModal(); if (m) m.hidden = false; }
@@ -283,8 +334,21 @@
     loadCouponList(list.dataset.userId, 1, filters);
   });
 
+  // Delegated submit: either concierge chat form (reco-list or coupon-detail).
+  document.addEventListener("submit", (e) => {
+    const chatForm = e.target.closest(".js-chat-form");
+    if (chatForm) { e.preventDefault(); sendChat(chatForm); }
+  });
+
   // Keyboard: Enter/Space activates a focused card; Esc closes the top-most overlay.
   document.addEventListener("keydown", (e) => {
+    // Chat composer (multi-line): Ctrl+Enter (or ⌘+Enter) sends; plain Enter is a
+    // newline. Works in both the reco-list and coupon-detail chat inputs.
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey) &&
+        e.target.classList.contains("js-chat-text")) {
+      const form = e.target.closest(".js-chat-form");
+      if (form) { e.preventDefault(); sendChat(form); return; }
+    }
     if ((e.key === "Enter" || e.key === " ") &&
         e.target.matches(".user-card[data-user-id], .coupon-card[data-coupon-id]")) {
       e.preventDefault(); e.target.click();
