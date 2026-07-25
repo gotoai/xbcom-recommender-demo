@@ -21,11 +21,10 @@
     </label>
   </div>
 
-  {# --- Panel 1 (40%): hero image with guidance overlay + redeem CTA --- #}
+  {# --- Panel 1 (40%): hero image with redeem CTA --- #}
   <section class="cd-image-panel">
     <img class="cd-image" src="/assets/images/{{ c.image | urlencode }}" alt=""
          onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'cd-image-fallback',textContent:'{{ c.emoji }}'}))">
-    <div class="cd-guidance">{{ t.coupon_guidance }}</div>
     <button type="button" class="cd-use-btn" id="cd-use">{{ t.use_this_coupon }}</button>
   </section>
 

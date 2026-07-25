@@ -195,6 +195,63 @@
     return div;
   }
 
+  // --- HTML sanitizer for the model's replies (it is instructed to answer in HTML) ---
+  // DOMParser parses into an INERT document (no scripts run), then we rebuild the tree
+  // from an allowlist: unknown tags are unwrapped (text kept), <script>/<style> dropped
+  // whole, <a href> survives with a scheme check, and <img> only with a src on the
+  // Mapillary CDN (the street-photo tool's images). No attribute the model sends is
+  // trusted (no style/on*), so this is XSS-safe.
+  const OK_TAGS = new Set(["P", "BR", "STRONG", "B", "EM", "I", "U", "S", "UL", "OL",
+    "LI", "CODE", "PRE", "A", "H3", "H4", "H5", "BLOCKQUOTE", "SPAN", "SUP", "SUB", "IMG"]);
+  const OK_ATTR = { A: new Set(["href"]), IMG: new Set(["src", "alt"]) };
+
+  // <img src> is restricted to the Mapillary CDN host so a prompt-injected reply can't
+  // load an arbitrary external image (tracking pixel / data exfil). Mapillary thumbs are
+  // served from *.fbcdn.net over https.
+  function isAllowedImgSrc(value) {
+    try {
+      const u = new URL(String(value).trim());
+      return u.protocol === "https:" && /(^|\.)fbcdn\.net$/i.test(u.hostname);
+    } catch { return false; }
+  }
+
+  function sanitizeInto(src, dst) {
+    src.childNodes.forEach((node) => {
+      if (node.nodeType === 3) {  // text
+        dst.appendChild(document.createTextNode(node.nodeValue));
+        return;
+      }
+      if (node.nodeType !== 1) return;  // drop comments / others
+      const tag = node.tagName;
+      if (tag === "SCRIPT" || tag === "STYLE" || tag === "TEMPLATE") return;  // + content
+      if (!OK_TAGS.has(tag)) { sanitizeInto(node, dst); return; }  // unwrap unknown
+      const el = document.createElement(tag);
+      const allow = OK_ATTR[tag];
+      if (allow) {
+        for (const a of node.attributes) {
+          const name = a.name.toLowerCase();
+          if (!allow.has(name)) continue;
+          if (name === "href" && !/^(https?:|mailto:)/i.test(a.value.trim())) continue;
+          if (name === "src" && !isAllowedImgSrc(a.value)) continue;
+          el.setAttribute(name, a.value);
+        }
+      }
+      if (tag === "A") { el.setAttribute("target", "_blank"); el.setAttribute("rel", "noopener noreferrer"); }
+      if (tag === "IMG") {
+        if (!el.getAttribute("src")) return;  // drop an <img> with no allowed src
+        el.setAttribute("referrerpolicy", "no-referrer");
+        el.setAttribute("loading", "lazy");
+      }
+      sanitizeInto(node, el);
+      dst.appendChild(el);
+    });
+    return dst;
+  }
+  function sanitizeHtml(html) {
+    const doc = new DOMParser().parseFromString(String(html), "text/html");
+    return sanitizeInto(doc.body, document.createElement("div")).innerHTML;
+  }
+
   // Post one chat turn to the backend and render the reply. Naive: the server holds
   // the history (keyed per traveler, or per traveler+coupon); the browser sends only
   // the message text. Endpoint + strings come from the form's data-* attributes, so
@@ -220,7 +277,7 @@
       const data = r.ok ? await r.json() : null;
       if (data && data.reply) {
         pending.className = "msg assistant";
-        pending.textContent = data.reply;
+        pending.innerHTML = sanitizeHtml(data.reply);  // model replies in (sanitized) HTML
       } else {
         pending.className = "msg assistant error-msg";
         pending.textContent = form.dataset.error || "Something went wrong.";

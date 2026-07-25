@@ -21,7 +21,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
-from . import agent, config, data, dates, i18n, labels
+import agent
+from config import config
+
+from . import data, dates, i18n, labels
 
 log = logging.getLogger(__name__)
 
@@ -223,18 +226,30 @@ class ChatIn(BaseModel):
     message: str
 
 
+def _latlon(rec: dict | None) -> tuple[float, float] | None:
+    """(lat, lon) from a reco location / coupon dict, or None if unavailable."""
+    if not rec:
+        return None
+    lat, lon = rec.get("latitude"), rec.get("longitude")
+    return (lat, lon) if lat is not None and lon is not None else None
+
+
 @app.post("/ui/user/{traveler_id}/chat")
 async def reco_chat(traveler_id: int, body: ChatIn) -> JSONResponse:
     """One turn of the reco-screen (coupon-list) concierge chat — the traveler asking
     about their coupon set as a whole. Same naive relay as the coupon-detail chat, but
     a **per-traveler** history thread (``reco:<id>``), kept separate from the
-    per-coupon threads."""
+    per-coupon threads. The traveler's current location is passed through so the agent
+    can answer directions questions via the railway tool."""
     message = (body.message or "").strip()
     if not message:
         return JSONResponse({"error": "empty message"}, status_code=400)
+    reco = _reco_or_404(traveler_id)
+    origin = _latlon(reco["location"]) if reco else None
     session_key = f"reco:{traveler_id}"
     try:
-        answer = await run_in_threadpool(agent.reply, session_key, message)
+        answer = await run_in_threadpool(
+            agent.reply, session_key, traveler_id, message, origin=origin)
     except Exception:  # noqa: BLE001 — surface a generic failure; the panel shows a retry hint
         log.exception("reco-chat agent call failed (session=%s)", session_key)
         return JSONResponse({"error": "agent unavailable"}, status_code=502)
@@ -246,14 +261,22 @@ async def coupon_chat(traveler_id: int, coupon_id: str, body: ChatIn) -> JSONRes
     """One turn of the coupon-detail concierge chat. Naive first cut: the user's text
     is relayed to the data plane via ``agent.reply`` and the model's answer returned.
     History is server-held, keyed per (traveler, coupon) — the browser sends only the
-    message. The blocking oumigo call runs in a threadpool so the event loop stays
-    free."""
+    message. The traveler's current location and the coupon shop's location are passed
+    through so the agent can answer "how do I get there?" via the railway tool. The
+    blocking oumigo call runs in a threadpool so the event loop stays free."""
     message = (body.message or "").strip()
     if not message:
         return JSONResponse({"error": "empty message"}, status_code=400)
+    reco = _reco_or_404(traveler_id)
+    origin = _latlon(reco["location"]) if reco else None
+    coupon = next((c for c in reco["coupons"] if str(c["coupon_id"]) == str(coupon_id)),
+                  None) if reco else None
+    destination = _latlon(coupon)
     session_key = f"{traveler_id}:{coupon_id}"
     try:
-        answer = await run_in_threadpool(agent.reply, session_key, message)
+        answer = await run_in_threadpool(
+            agent.reply, session_key, traveler_id, message,
+            origin=origin, destination=destination, coupon=coupon)
     except Exception:  # noqa: BLE001 — surface a generic failure; the panel shows a retry hint
         log.exception("coupon-chat agent call failed (session=%s)", session_key)
         return JSONResponse({"error": "agent unavailable"}, status_code=502)

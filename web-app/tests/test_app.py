@@ -9,7 +9,8 @@ from fastapi.testclient import TestClient
 
 JST = timezone(timedelta(hours=9))
 
-from app import config, data, dates, i18n, labels
+from config import config
+from app import data, dates, i18n, labels
 from app.main import app
 
 client = TestClient(app)

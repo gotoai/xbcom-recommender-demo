@@ -29,7 +29,9 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime
 
-from . import config, dates, i18n
+from config import config
+
+from . import dates, i18n
 
 # The three daypart timespans the visit data is bucketed into.
 TIMESPANS = ("06:00-11:59", "12:00-17:59", "18:00-23:59")
